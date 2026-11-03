@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% comment %}
+  통계 (담당자·관리자)
+  - 기간: 이번 달 / 최근 3개월 / 올해 / 직접 지정 (문의 등록일 기준)
+  - 요약 카드 4개 + 차트 4개(Chart.js) + 반복 문의 키워드 순위
+  - 차트 데이터는 views.stats에서 만들어 json_script로 넘김
+  - 차트마다 '표로 보기'를 두어 색만으로 정보를 전달하지 않음
+{% endcomment %}
+
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+  {# ── 기간 선택 ── #}
+  <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+    <div class="inline-flex flex-wrap p-1 rounded-lg bg-sidebar gap-1 self-start">
+      {% for key, label in periods %}
+        {% if key != 'custom' %}
+          <a href="?period={{ key }}" class="flex items-center h-8 px-3.5 rounded-md text-sm transition-colors
+             {% if period == key %}bg-canvas text-ink font-semibold shadow-sm{% else %}text-muted hover:text-ink{% endif %}">{{ label }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <form method="get" class="flex flex-wrap items-center gap-1.5">
+      <input type="hidden" name="period" value="custom">
+      <input type="date" name="start" value="{{ start|date:'Y-m-d' }}" class="input h-9 w-auto text-[13px] {% if period == 'custom' %}border-accent{% endif %}" aria-label="시작일">
+      <span class="text-muted text-sm">~</span>
+      <input type="date" name="end" value="{{ end|date:'Y-m-d' }}" class="input h-9 w-auto text-[13px] {% if period == 'custom' %}border-accent{% endif %}" aria-label="종료일">
+      <button type="submit" class="btn btn-secondary h-9 {% if period == 'custom' %}border-accent text-accent{% endif %}">직접 지정</button>
+    </form>
+  </div>
+
+  {# ── 요약 카드 ── #}
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    {% for c in summary %}
+      {% include 'components/card.html' with title=c.title value=c.value icon=c.icon description=c.description %}
+    {% endfor %}
+  </section>
+
+  {% if total == 0 %}
+    {% include 'components/empty_state.html' with icon='chart-no-axes-column' title='이 기간에 등록된 문의가 없습니다' description='기간을 바꿔 보세요.' %}
+  {% else %}
+
+  <div class="grid lg:grid-cols-2 gap-6">
+    {# ── 추이 (선) ── #}
+    <section class="card p-5 lg:col-span-2">
+      <h2 class="text-sm font-semibold">{{ trend_title }}</h2>
+      <p class="text-xs text-muted mt-0.5">등록된 문의 수</p>
+      <div class="relative h-64 mt-4"><canvas id="chart-trend" role="img" aria-label="{{ trend_title }} 선 차트"></canvas></div>
+      <details class="mt-3">
+        <summary class="text-xs text-muted cursor-pointer hover:text-ink">표로 보기</summary>
+        <div class="mt-2 max-h-60 overflow-auto"><table class="w-full text-[13px]"><tbody class="divide-y divide-line">
+          {% for label, value in trend_rows %}<tr><td class="py-1.5 text-muted">{{ label }}</td><td class="py-1.5 text-right tabular-nums">{{ value }}건</td></tr>{% endfor %}
+        </tbody></table></div>
+      </details>
+    </section>
+
+    {# ── 카테고리별 (가로 막대) ── #}
+    <section class="card p-5">
+      <h2 class="text-sm font-semibold">카테고리별 건수</h2>
+      <div class="relative mt-4" style="height: {{ category_chart_height }}px;">
+        <canvas id="chart-category" role="img" aria-label="카테고리별 건수 가로 막대 차트"></canvas>
+      </div>
+      <details class="mt-3">
+        <summary class="text-xs text-muted cursor-pointer hover:text-ink">표로 보기</summary>
+        <table class="mt-2 w-full text-[13px]"><tbody class="divide-y divide-line">
+          {% for r in by_category %}<tr><td class="py-1.5">{{ r.category__name }}</td><td class="py-1.5 text-right tabular-nums">{{ r.n }}건</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    </section>
+
+    {# ── 상태별 비율 (도넛) ── #}
+    <section class="card p-5">
+      <h2 class="text-sm font-semibold">상태별 비율</h2>
+      <div class="mt-4 flex flex-col sm:flex-row items-center gap-6">
+        <div class="relative w-44 h-44 shrink-0">
+          <canvas id="chart-status" role="img" aria-label="상태별 비율 도넛 차트"></canvas>
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-2xl font-bold tabular-nums">{{ total }}</span>
+            <span class="text-xs text-muted">전체</span>
+          </div>
+        </div>
+        {# 범례 = 표: 색 + 이름 + 건수 + 비율 (색만으로 구분하지 않음) #}
+        <ul class="w-full space-y-1.5 text-[13px]">
+          {% for r in status_rows %}
+            <li class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background: {{ r.color }}"></span>
+              <span class="flex-1">{{ r.label }}</span>
+              <span class="tabular-nums font-medium">{{ r.value }}</span>
+              <span class="w-12 text-right tabular-nums text-muted">{{ r.percent }}%</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    {# ── 부서별 (세로 막대) ── #}
+    <section class="card p-5 lg:col-span-2">
+      <h2 class="text-sm font-semibold">부서별 건수</h2>
+      <p class="text-xs text-muted mt-0.5">등록 당시 요청 부서 기준</p>
+      <div class="relative h-60 mt-4"><canvas id="chart-department" role="img" aria-label="부서별 건수 막대 차트"></canvas></div>
+      <details class="mt-3">
+        <summary class="text-xs text-muted cursor-pointer hover:text-ink">표로 보기</summary>
+        <table class="mt-2 w-full text-[13px]"><tbody class="divide-y divide-line">
+          {% for r in by_department %}<tr><td class="py-1.5">{{ r.department__name|default:'(없음)' }}</td><td class="py-1.5 text-right tabular-nums">{{ r.n }}건</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    </section>
+  </div>
+
+  {# ── 반복 문의 순위 ── #}
+  <section>
+    <h2 class="text-base font-semibold">반복 문의 키워드 <span class="ml-1 text-sm font-normal text-muted">같은 카테고리에서 제목에 자주 나온 단어 · 상위 10개</span></h2>
+    {% if keywords %}
+      <div class="mt-3 overflow-x-auto border border-line rounded-lg">
+        <table class="w-full text-sm">
+          <thead class="bg-sidebar text-xs text-muted text-left">
+            <tr>
+              <th class="px-4 py-2.5 font-medium w-14">순위</th>
+              <th class="px-4 py-2.5 font-medium">키워드</th>
+              <th class="px-4 py-2.5 font-medium">카테고리</th>
+              <th class="px-4 py-2.5 font-medium text-right">문의 수</th>
+              <th class="px-4 py-2.5 font-medium w-48 hidden sm:table-cell"><span class="sr-only">비율</span></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {% with top=keywords.0.count %}
+            {% for k in keywords %}
+              <tr class="hover:bg-hover">
+                <td class="px-4 py-2.5 text-muted tabular-nums">{{ forloop.counter }}</td>
+                <td class="px-4 py-2.5"><a href="{{ k.href }}" class="font-medium hover:underline">{{ k.word }}</a></td>
+                <td class="px-4 py-2.5 text-muted">{{ k.category }}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums">{{ k.count }}건</td>
+                <td class="px-4 py-2.5 hidden sm:table-cell">
+                  {# 막대 길이 = 1위 대비 비율 #}
+                  <div class="h-1.5 rounded-full bg-hover"><div class="h-1.5 rounded-full bg-[#2a78d6]" style="width: {% widthratio k.count top 100 %}%"></div></div>
+                </td>
+              </tr>
+            {% endfor %}
+            {% endwith %}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-2 text-xs text-muted">키워드를 누르면 해당 조건의 문의 목록이 열립니다. '요청', '문의'처럼 흔한 단어는 제외했습니다.</p>
+    {% else %}
+      <p class="mt-3 text-sm text-muted">이 기간에는 2번 이상 반복된 키워드가 없습니다.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+</div>
+
+{{ chart_data|json_script:'chart-data' }}
+{% endblock %}
+
+{% block page_js %}
+<script>
+  (function () {
+    if (!window.Chart || !document.getElementById('chart-trend')) return;
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+
+    // ── 공통 스타일: 차분한 색, 옅은 격자, 얇은 선 ──
+    const SERIES = '#2a78d6';           // 단일 계열 색 (포인트 블루 계열)
+    const GRID = '#EFEFED';             // 격자선 (호버 색과 같은 옅은 회색)
+    Chart.defaults.font.family = '"Pretendard Variable", Pretendard, sans-serif';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#787774';   // 축 글자 = 보조 텍스트
+    Chart.defaults.plugins.legend.display = false;  // 단일 계열은 범례 없이 제목으로 설명
+    Object.assign(Chart.defaults.plugins.tooltip, {
+      backgroundColor: '#37352F', padding: 10, cornerRadius: 6, displayColors: false,
+      titleFont: { weight: '600' },
+    });
+    const countLabel = (ctx) => `${ctx.parsed.y ?? ctx.parsed.x ?? ctx.parsed}건`;
+    const valueAxis = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: GRID }, border: { display: false } };
+    const categoryAxis = { grid: { display: false }, border: { color: GRID } };
+
+    // ── 추이 (선): 마우스 위치의 날짜 값을 툴팁으로 ──
+    const many = data.trend.labels.length > 31;
+    new Chart(document.getElementById('chart-trend'), {
+      type: 'line',
+      data: { labels: data.trend.labels, datasets: [{
+        data: data.trend.values, borderColor: SERIES, borderWidth: 2, tension: 0,  // 곡선은 없는 값을 있는 것처럼 보이게 해서 직선
+        backgroundColor: 'rgba(42, 120, 214, 0.08)', fill: 'origin',
+        pointRadius: many ? 0 : 4, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderWidth: 2,
+      }]},
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: { y: valueAxis, x: { ...categoryAxis, ticks: { maxRotation: 0, autoSkipPadding: 12 } } },
+        plugins: { tooltip: { callbacks: { label: countLabel } } },
+      },
+    });
+
+    // ── 막대 공통: 끝만 둥글게(4px), 얇게 ──
+    const bar = (values) => ({
+      data: values, backgroundColor: SERIES, hoverBackgroundColor: '#1c5cab',
+      borderRadius: 4, borderSkipped: 'start', maxBarThickness: 24, categoryPercentage: 0.7,
+    });
+
+    new Chart(document.getElementById('chart-category'), {
+      type: 'bar',
+      data: { labels: data.category.labels, datasets: [bar(data.category.values)] },
+      options: {
+        indexAxis: 'y', maintainAspectRatio: false,
+        interaction: { mode: 'index', axis: 'y', intersect: false },  // 막대가 있는 줄 어디에 올려도 툴팁
+        scales: { x: valueAxis, y: { ...categoryAxis, ticks: { color: '#37352F' } } },
+        plugins: { tooltip: { callbacks: { label: countLabel } } },
+      },
+    });
+
+    new Chart(document.getElementById('chart-department'), {
+      type: 'bar',
+      data: { labels: data.department.labels, datasets: [bar(data.department.values)] },
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', axis: 'x', intersect: false },  // 막대가 있는 칸 어디에 올려도 툴팁
+        scales: { y: valueAxis, x: { ...categoryAxis, ticks: { color: '#37352F' } } },
+        plugins: { tooltip: { callbacks: { label: countLabel } } },
+      },
+    });
+
+    // ── 상태별 비율 (도넛): 조각 사이 2px 흰 간격 ──
+    const total = data.status.values.reduce((a, b) => a + b, 0);
+    new Chart(document.getElementById('chart-status'), {
+      type: 'doughnut',
+      data: { labels: data.status.labels, datasets: [{
+        data: data.status.values, backgroundColor: data.status.colors,
+        borderColor: '#FFFFFF', borderWidth: 2, hoverOffset: 4,
+      }]},
+      options: {
+        cutout: '66%', maintainAspectRatio: false,
+        plugins: { tooltip: { callbacks: {
+          label: (ctx) => `${ctx.parsed}건 (${total ? Math.round(ctx.parsed * 1000 / total) / 10 : 0}%)`,
+        } } },
+      },
+    });
+  })();
+</script>
+{% endblock %}

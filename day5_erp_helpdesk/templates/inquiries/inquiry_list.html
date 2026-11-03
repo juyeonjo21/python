@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% comment %}
+  문의 목록 화면 (전체 문의 / 내 문의 공용)
+  실제 내용은 _list_region.html에 있고, 필터를 바꾸면 그 부분만 HTMX로 교체됩니다.
+{% endcomment %}
+
+{% block page_title %}
+  {{ page_title }}
+  <span id="total-count" class="ml-1 text-lg font-medium text-muted">{{ total_count }}건</span>
+{% endblock %}
+
+{% block actions %}
+  {% url 'inquiries:create' as create_url %}
+  {% include 'components/button.html' with label='새 문의' icon='plus' href=create_url %}
+{% endblock %}
+
+{% block content %}
+  {% include 'inquiries/_list_region.html' %}
+{% endblock %}
+
+{% block page_js %}
+<script>
+  // 목록의 행·카드를 누르면 상세로 이동 (Ctrl/⌘+클릭은 새 탭)
+  // document에 한 번만 걸어두면 HTMX로 목록이 바뀌어도 계속 동작
+  document.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-href]');
+    if (!row || e.target.closest('a, button, input, select')) return;
+    if (e.metaKey || e.ctrlKey) window.open(row.dataset.href, '_blank');
+    else window.location.href = row.dataset.href;
+  });
+</script>
+{% endblock %}

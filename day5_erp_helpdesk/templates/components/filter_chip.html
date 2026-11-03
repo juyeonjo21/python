@@ -1,0 +1,10 @@
+{% comment %}
+  필터 칩 (선택된 검색 조건 표시 + x 버튼으로 해제)
+  사용: {% include 'components/filter_chip.html' with label='카테고리: 오류 신고' remove_url=url %}
+{% endcomment %}
+<span class="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-full border border-line bg-sidebar text-xs text-ink">
+  {{ label }}
+  <a href="{{ remove_url }}" class="flex items-center justify-center w-5 h-5 rounded-full text-muted hover:bg-hover hover:text-ink" aria-label="{{ label }} 조건 해제">
+    <i data-lucide="x" class="w-3 h-3"></i>
+  </a>
+</span>

@@ -1,0 +1,19 @@
+{% comment %}
+  입력칸 1개 (이름표 + 입력칸 + 도움말 + 빨간 오류 메시지)
+  사용: {% include 'components/form_field.html' with field=form.title %}
+  - field: 폼의 입력칸 (BoundField)
+  - 필수 항목이면 이름표 옆에 빨간 * 표시
+  - 오류가 있으면 입력칸 테두리도 빨갛게 표시
+{% endcomment %}
+<div>
+  <label for="{{ field.id_for_label }}" class="label">
+    {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+  </label>
+  <div class="{% if field.errors %}[&_.input]:border-red-400 [&_.input]:focus:ring-red-100{% endif %}">
+    {{ field }}
+  </div>
+  {% if field.help_text %}<p class="mt-1 text-xs text-muted">{{ field.help_text }}</p>{% endif %}
+  {% for error in field.errors %}
+    <p class="mt-1 flex items-center gap-1 text-[13px] text-red-600"><i data-lucide="circle-alert" class="w-3.5 h-3.5 shrink-0"></i>{{ error }}</p>
+  {% endfor %}
+</div>

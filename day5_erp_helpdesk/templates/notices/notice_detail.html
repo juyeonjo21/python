@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% comment %} 공지 상세 - 본문, 작성자, 등록·수정일. 담당자·관리자에게는 [수정] 버튼 {% endcomment %}
+
+{% block page_title %}
+  {% if notice.is_pinned or notice.category %}
+    <span class="flex items-center gap-2 mb-2 text-sm font-normal">
+      {% if notice.is_pinned %}<span class="inline-flex items-center gap-1 text-accent"><i data-lucide="pin" class="w-3.5 h-3.5"></i>고정</span>{% endif %}
+      {% if notice.category %}<span class="h-5 px-1.5 rounded bg-hover text-xs leading-5 text-muted">{{ notice.get_category_display }}</span>{% endif %}
+    </span>
+  {% endif %}
+  {{ notice.title }}
+{% endblock %}
+
+{% block actions %}
+  {% url 'notices:list' as list_url %}
+  {% include 'components/button.html' with label='목록으로' variant='secondary' icon='arrow-left' href=list_url %}
+  {% if user.is_staff_member %}
+    {% url 'notices:update' notice.pk as edit_url %}
+    {% include 'components/button.html' with label='수정' variant='secondary' icon='pencil' href=edit_url %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <article class="max-w-3xl">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pb-5 mb-6 border-b border-line text-[13px] text-muted">
+      {% include 'components/avatar.html' with name=notice.author.name size='sm' %}
+      <span class="font-medium text-ink">{{ notice.author.name }}</span>
+      <span aria-hidden="true">·</span>
+      <span>등록 {{ notice.created_at|date:'Y-m-d H:i' }}</span>
+      {% if notice.updated_at|date:'YmdHi' != notice.created_at|date:'YmdHi' %}
+        <span aria-hidden="true">·</span><span>수정 {{ notice.updated_at|date:'Y-m-d H:i' }}</span>
+      {% endif %}
+      {% if notice.inquiry_category %}
+        <span aria-hidden="true">·</span><span>관련 카테고리: {{ notice.inquiry_category }}</span>
+      {% endif %}
+    </div>
+    <div class="text-[15px] leading-8 break-words">{{ notice.content|linebreaks }}</div>
+  </article>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% comment %}
+  문의 상세 화면 (모든 화면 폭에서 한 줄 배치)
+  순서: ① 문의 내용 → ② 처리 메뉴(경영지원실) → ③ 답변 입력창 → ④ 진행 내역(최신순) → 유사/관련 문의
+  - HTMX로 바뀌는 부분: #detail-panel, #timeline, #header-status, #composer-error
+{% endcomment %}
+
+{% block page_title %}
+  <span class="block mb-1 font-mono text-sm font-normal text-muted">{{ inquiry.inquiry_no }}</span>
+  <span class="align-middle">{{ inquiry.title }}</span>
+  {% include 'inquiries/_header_status.html' %}
+{% endblock %}
+
+{% block actions %}
+  {# 목록에서 걸어 둔 필터가 있으면 그대로 유지한 목록으로 돌아감 (views._list_back_url) #}
+  {% include 'components/button.html' with label='목록으로' variant='secondary' icon='arrow-left' href=back_url %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    {# ① 문의 내용 #}
+    <article class="card p-5 sm:p-6">
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
+        {% include 'components/avatar.html' with name=inquiry.requester.name size='sm' %}
+        <span class="font-medium text-ink">{{ inquiry.requester.name }}</span>
+        {% if inquiry.department %}<span>{{ inquiry.department.name }}</span>{% endif %}
+        <span aria-hidden="true">·</span>
+        <time title="{{ inquiry.created_at|date:'Y-m-d H:i:s' }}">{{ inquiry.created_at|naturaltime }}</time>
+        <span aria-hidden="true">·</span>
+        <span>{{ inquiry.category }}</span>
+      </div>
+
+      <div class="mt-4 text-[15px] leading-7 break-words">{{ inquiry.content|linebreaksbr }}</div>
+
+      {% if extra_items %}
+        <dl class="mt-6 grid sm:grid-cols-2 gap-x-6 gap-y-3 rounded-md bg-sidebar p-4 text-sm">
+          {% for label, value in extra_items %}
+            <div class="min-w-0">
+              <dt class="text-xs text-muted">{{ label }}</dt>
+              <dd class="mt-0.5 break-words">{{ value|linebreaksbr }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+      {% endif %}
+
+      {% if attachments %}
+        <div class="mt-6">
+          <p class="text-xs text-muted mb-2">첨부파일 {{ attachments|length }}개</p>
+          {% include 'components/attachment_list.html' with attachments=attachments size='lg' %}
+        </div>
+      {% endif %}
+    </article>
+
+    {# ② 처리 메뉴 (담당자·관리자는 버튼으로 변경, 일반 사용자는 읽기 전용) #}
+    {% include 'inquiries/_detail_panel.html' %}
+
+    {# ③ 답변 입력창 #}
+    <section>
+      {% include 'inquiries/_composer.html' %}
+    </section>
+
+    {# ④ 진행 내역 (최신순 - 방금 등록한 답변이 입력창 바로 아래에 보임) #}
+    <section>
+      <h2 class="text-sm font-semibold mb-4">진행 내역 <span class="font-normal text-muted">최신순</span></h2>
+      {% include 'inquiries/_timeline.html' %}
+    </section>
+
+    {# 유사 문의 · 관련 문의 #}
+    <section class="grid sm:grid-cols-2 gap-6 pt-8 border-t border-line">
+      <div>
+        <h2 class="flex items-center gap-1.5 text-sm font-semibold mb-2"><i data-lucide="history" class="w-4 h-4 text-muted"></i>비슷한 문의</h2>
+        {% if similar %}
+          <ul class="space-y-1">
+            {% for inq in similar %}<li>{% include 'components/inquiry_mini.html' with inq=inq %}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-3 py-2 text-[13px] text-muted">같은 카테고리에 비슷한 문의가 없습니다.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h2 class="flex items-center gap-1.5 text-sm font-semibold mb-2"><i data-lucide="link" class="w-4 h-4 text-muted"></i>관련 문의</h2>
+        {% if related %}
+          <ul class="space-y-1">
+            {% for r in related %}<li>{% include 'components/inquiry_mini.html' with inq=r.inquiry note=r.note %}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p class="px-3 py-2 text-[13px] text-muted">연결된 문의가 없습니다.</p>
+        {% endif %}
+      </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+  // 입력창에서 '내부 메모'를 고르면 노란 배경
+  document.addEventListener('change', (e) => {
+    if (e.target.matches('#composer [name=type]')) {
+      document.getElementById('composer').classList.toggle('is-internal', e.target.value === 'INTERNAL');
+    }
+  });
+
+  // ── 처리 메뉴: 상태 버튼 ──
+  // 일반 상태 버튼은 누르면 바로 저장(type=submit),
+  // 보류·반려·처리 완료 버튼은 사유 입력칸만 열고 [저장]을 눌러야 저장
+  // (처리 메뉴는 저장할 때마다 새로 그려지므로 document에 한 번만 걸어 둠)
+  document.addEventListener('click', (e) => {
+    const form = e.target.closest('[data-status-form]');
+    if (!form) return;
+    const box = form.querySelector('[data-reason-box]');
+    const hidden = form.querySelector('[data-reason-status-input]');
+    const reasonButtons = form.querySelectorAll('[data-reason-status]');
+
+    const reasonBtn = e.target.closest('[data-reason-status]');
+    if (reasonBtn) {
+      // 고른 버튼만 테두리로 표시
+      reasonButtons.forEach(b => b.classList.toggle('border-ink', b === reasonBtn));
+      reasonButtons.forEach(b => b.classList.toggle('text-ink', b === reasonBtn));
+      hidden.value = reasonBtn.dataset.reasonStatus;
+      hidden.disabled = false;
+      form.querySelector('[data-reason-label]').textContent = reasonBtn.dataset.reasonLabel + ' (필수)';
+      box.classList.remove('hidden');
+      const input = form.querySelector('[data-reason-input]');
+      if (hidden.value === 'CLOSED' && !input.value) input.value = input.dataset.resolution || '';
+      input.focus();
+      return;
+    }
+
+    // 취소 또는 다른 상태 버튼 → 사유 입력칸 닫기 (숨은 status 값이 함께 전송되지 않도록 비활성화)
+    if (e.target.closest('[data-reason-cancel]') || e.target.closest('button[name=status]')) {
+      box.classList.add('hidden');
+      hidden.disabled = true;
+      reasonButtons.forEach(b => b.classList.remove('border-ink', 'text-ink'));
+    }
+  });
+
+  // ── 입력창: 등록 성공(서버가 보낸 commentAdded 신호) → 비우기 ──
+  document.body.addEventListener('commentAdded', () => {
+    const form = document.getElementById('composer');
+    form.reset();
+    form.classList.remove('is-internal');
+    form.querySelectorAll('[data-dropzone]').forEach(z => z.dispatchEvent(new Event('dropzone:clear')));
+  });
+</script>
+{% endblock %}

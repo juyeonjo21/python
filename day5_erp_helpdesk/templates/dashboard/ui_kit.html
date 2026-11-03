@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% comment %}
+  UI 키트 - 공통 컴포넌트 미리보기 (관리자 전용)
+  각 섹션 아래 회색 글씨가 실제 화면에서 쓰는 코드입니다.
+{% endcomment %}
+
+{% block actions %}
+  {% include 'components/button.html' with label='Admin 열기' variant='secondary' icon='settings' href='/admin/' %}
+  {% include 'components/button.html' with label='새 문의' icon='plus' href='/inquiries/new/' %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-12">
+
+  {# ── 색상 토큰 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">색상 토큰</h2>
+    <p class="text-sm text-muted mb-4">tailwind.config에 등록된 색. <code>bg-sidebar</code>, <code>text-muted</code>, <code>border-line</code>처럼 사용합니다.</p>
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div class="card overflow-hidden"><div class="h-14 bg-canvas border-b border-line"></div><div class="p-2.5 text-xs"><p class="font-medium">canvas</p><p class="text-muted">#FFFFFF</p></div></div>
+      <div class="card overflow-hidden"><div class="h-14 bg-sidebar"></div><div class="p-2.5 text-xs"><p class="font-medium">sidebar</p><p class="text-muted">#F7F7F5</p></div></div>
+      <div class="card overflow-hidden"><div class="h-14 bg-hover"></div><div class="p-2.5 text-xs"><p class="font-medium">hover</p><p class="text-muted">#EFEFED</p></div></div>
+      <div class="card overflow-hidden"><div class="h-14 bg-ink"></div><div class="p-2.5 text-xs"><p class="font-medium">ink</p><p class="text-muted">#37352F</p></div></div>
+      <div class="card overflow-hidden"><div class="h-14 bg-muted"></div><div class="p-2.5 text-xs"><p class="font-medium">muted</p><p class="text-muted">#787774</p></div></div>
+      <div class="card overflow-hidden"><div class="h-14 bg-line"></div><div class="p-2.5 text-xs"><p class="font-medium">line</p><p class="text-muted">#E9E9E7</p></div></div>
+      <div class="card overflow-hidden"><div class="h-14 bg-accent"></div><div class="p-2.5 text-xs"><p class="font-medium">accent</p><p class="text-muted">#2383E2</p></div></div>
+    </div>
+  </section>
+
+  {# ── 버튼 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">버튼 <span class="text-sm font-normal text-muted">components/button.html</span></h2>
+    <p class="text-sm text-muted mb-4">variant: primary(기본) / secondary(보조) / danger(위험) · size='sm' · href가 있으면 링크</p>
+    <div class="card p-6 space-y-4">
+      <div class="flex flex-wrap items-center gap-2">
+        {% include 'components/button.html' with label='기본' variant='primary' %}
+        {% include 'components/button.html' with label='보조' variant='secondary' %}
+        {% include 'components/button.html' with label='위험' variant='danger' %}
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        {% include 'components/button.html' with label='저장' variant='primary' icon='check' %}
+        {% include 'components/button.html' with label='목록' variant='secondary' icon='list' %}
+        {% include 'components/button.html' with label='반려' variant='danger' icon='ban' %}
+        {% include 'components/button.html' with label='비활성' variant='primary' disabled=True %}
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        {% include 'components/button.html' with label='작은 기본' variant='primary' size='sm' %}
+        {% include 'components/button.html' with label='작은 보조' variant='secondary' size='sm' icon='pencil' %}
+        {% include 'components/button.html' with label='작은 위험' variant='danger' size='sm' icon='trash-2' %}
+      </div>
+      <pre class="text-xs text-muted bg-sidebar rounded-md p-3 overflow-x-auto">{% templatetag openblock %} include 'components/button.html' with label='저장' variant='primary' icon='check' type='submit' {% templatetag closeblock %}</pre>
+    </div>
+  </section>
+
+  {# ── 상태·우선순위 배지 ── #}
+  <section class="grid lg:grid-cols-2 gap-6">
+    <div class="min-w-0">{# min-w-0: 긴 코드 줄이 칸을 넓히지 않도록 #}
+      <h2 class="text-lg font-semibold mb-1">상태 배지 <span class="text-sm font-normal text-muted">status_badge.html</span></h2>
+      <p class="text-sm text-muted mb-4">접수 회색 · 확인 중 노랑 · 처리 중 파랑 · 답변 완료 보라 · 처리 완료 초록 · 보류 주황 · 반려 빨강</p>
+      <div class="card p-6 space-y-4">
+        <div class="flex flex-wrap gap-2">
+          {% for value, text in statuses %}
+            {% include 'components/status_badge.html' with status=value %}
+          {% endfor %}
+        </div>
+        <pre class="text-xs text-muted bg-sidebar rounded-md p-3 overflow-x-auto">{% templatetag openblock %} include 'components/status_badge.html' with status=inquiry.status {% templatetag closeblock %}</pre>
+      </div>
+    </div>
+    <div class="min-w-0">
+      <h2 class="text-lg font-semibold mb-1">우선순위 배지 <span class="text-sm font-normal text-muted">priority_badge.html</span></h2>
+      <p class="text-sm text-muted mb-4">낮음 · 보통 · 높음 · 긴급</p>
+      <div class="card p-6 space-y-4">
+        <div class="flex flex-wrap gap-2">
+          {% for value, text in priorities %}
+            {% include 'components/priority_badge.html' with priority=value %}
+          {% endfor %}
+        </div>
+        <pre class="text-xs text-muted bg-sidebar rounded-md p-3 overflow-x-auto">{% templatetag openblock %} include 'components/priority_badge.html' with priority=inquiry.priority {% templatetag closeblock %}</pre>
+      </div>
+    </div>
+  </section>
+
+  {# ── 카드 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">카드 <span class="text-sm font-normal text-muted">components/card.html</span></h2>
+    <p class="text-sm text-muted mb-4">요약 숫자용 카드. 내용이 긴 영역은 <code>&lt;div class="card p-6"&gt;</code>로 직접 감쌉니다.</p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% include 'components/card.html' with title='전체 문의' value=40 icon='inbox' description='최근 90일' %}
+      {% include 'components/card.html' with title='처리 중' value=8 icon='loader' description='담당자 처리 중' %}
+      {% include 'components/card.html' with title='미배정' value=6 icon='user-x' description='담당자 지정 필요' %}
+      {% include 'components/card.html' with title='공지사항' description='링크 카드 예시 (클릭 가능)' icon='megaphone' href='/notices/' %}
+    </div>
+    <div class="card p-6 mt-4">
+      <p class="font-semibold">자유 형식 카드</p>
+      <p class="mt-1 text-sm text-muted">표, 입력 폼, 답변 목록처럼 내용이 긴 영역에 사용합니다.</p>
+    </div>
+  </section>
+
+  {# ── 아바타 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">아바타 <span class="text-sm font-normal text-muted">components/avatar.html</span></h2>
+    <p class="text-sm text-muted mb-4">이름 첫 글자 · size: sm / md(기본) / lg</p>
+    <div class="card p-6 space-y-5">
+      <div class="flex items-end gap-3">
+        {% include 'components/avatar.html' with name='김민준' size='sm' %}
+        {% include 'components/avatar.html' with name='김민준' %}
+        {% include 'components/avatar.html' with name='김민준' size='lg' %}
+      </div>
+      <div class="flex flex-wrap gap-4">
+        {% for u in sample_users %}
+          <div class="flex items-center gap-2">
+            {% include 'components/avatar.html' with name=u.name|default:u.username %}
+            <div><p class="text-sm font-medium">{{ u.name }}</p><p class="text-xs text-muted">{{ u.role_label }}</p></div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {# ── 빈 상태 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">빈 상태 <span class="text-sm font-normal text-muted">components/empty_state.html</span></h2>
+    <p class="text-sm text-muted mb-4">목록에 데이터가 없을 때. 버튼은 선택입니다.</p>
+    <div class="grid lg:grid-cols-2 gap-4">
+      {% include 'components/empty_state.html' with icon='inbox' title='등록된 문의가 없습니다' description='궁금한 점이나 개선이 필요한 점을 문의해 보세요.' action_label='새 문의' action_href='/inquiries/new/' %}
+      {% include 'components/empty_state.html' with icon='search-x' title='검색 결과가 없습니다' description='다른 검색어로 다시 찾아보세요.' %}
+    </div>
+  </section>
+
+  {# ── 페이지 이동 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">페이지 이동 <span class="text-sm font-normal text-muted">components/pagination.html</span></h2>
+    <p class="text-sm text-muted mb-4">예시 데이터 95건 / 10건씩. 숫자를 눌러 실제로 이동해 보세요. (현재 {{ page_obj.number }}페이지: {{ page_obj.start_index }}~{{ page_obj.end_index }}번)</p>
+    <div class="card px-6 pb-6 pt-1">
+      {% include 'components/pagination.html' with page_obj=page_obj %}
+    </div>
+  </section>
+
+  {# ── 입력창 ── #}
+  <section>
+    <h2 class="text-lg font-semibold mb-1">입력창 <span class="text-sm font-normal text-muted">.label / .input</span></h2>
+    <p class="text-sm text-muted mb-4">폼 화면에서 공통으로 쓰는 클래스</p>
+    <div class="card p-6 grid sm:grid-cols-2 gap-4">
+      <div><label class="label" for="demo1">제목</label><input id="demo1" class="input" placeholder="문의 제목을 입력하세요"></div>
+      <div><label class="label" for="demo2">분류</label><select id="demo2" class="input"><option>권한 요청</option><option>오류 신고</option></select></div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

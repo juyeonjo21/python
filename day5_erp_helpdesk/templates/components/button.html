@@ -1,0 +1,21 @@
+{% comment %}
+  버튼
+  사용: {% include 'components/button.html' with label='저장' variant='primary' icon='check' type='submit' %}
+        {% include 'components/button.html' with label='목록' variant='secondary' href=list_url %}
+  - variant : primary(기본) / secondary(보조) / danger(위험)   ※ 생략하면 primary
+  - href    : 있으면 링크(<a>), 없으면 <button>
+  - type    : button(기본) / submit
+  - icon    : Lucide 아이콘 이름 (선택)
+  - size    : sm 이면 작은 버튼 (선택)
+  - disabled: True면 비활성
+  ※ HTMX 속성 등 특별한 속성이 필요하면 <button class="btn btn-primary">처럼 클래스를 직접 써도 됩니다.
+{% endcomment %}
+{% if href %}
+<a href="{{ href }}" class="btn btn-{{ variant|default:'primary' }}{% if size == 'sm' %} btn-sm{% endif %}">
+  {% if icon %}<i data-lucide="{{ icon }}"></i>{% endif %}{{ label }}
+</a>
+{% else %}
+<button type="{{ type|default:'button' }}" class="btn btn-{{ variant|default:'primary' }}{% if size == 'sm' %} btn-sm{% endif %}"{% if disabled %} disabled{% endif %}>
+  {% if icon %}<i data-lucide="{{ icon }}"></i>{% endif %}{{ label }}
+</button>
+{% endif %}

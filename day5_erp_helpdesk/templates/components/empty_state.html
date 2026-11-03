@@ -1,0 +1,17 @@
+{% comment %}
+  빈 상태 (목록에 데이터가 없을 때)
+  사용: {% include 'components/empty_state.html' with icon='inbox' title='등록된 문의가 없습니다' description='궁금한 점을 문의해 보세요.' action_label='새 문의' action_href=url %}
+  - icon, title, description, action_label + action_href(버튼, 선택)
+{% endcomment %}
+<div class="flex flex-col items-center justify-center text-center px-6 py-16 border border-dashed border-line rounded-lg">
+  <div class="flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-sidebar text-muted">
+    <i data-lucide="{{ icon|default:'inbox' }}" class="w-6 h-6"></i>
+  </div>
+  <p class="font-semibold">{{ title|default:'데이터가 없습니다' }}</p>
+  {% if description %}<p class="mt-1 text-sm text-muted max-w-sm">{{ description }}</p>{% endif %}
+  {% if action_href %}
+    <div class="mt-5">
+      {% include 'components/button.html' with label=action_label href=action_href icon='plus' variant='primary' %}
+    </div>
+  {% endif %}
+</div>

@@ -1,0 +1,15 @@
+{% comment %}
+  문의 한 줄 요약 링크 (문의번호 · 상태 배지 · 제목) - 유사 문의·관련 문의 목록용
+  사용: {% include 'components/inquiry_mini.html' with inq=inquiry note='메모' new_tab=True %}
+  - note   : 아래 작게 보여줄 메모 (선택)
+  - new_tab: True면 새 탭에서 열기 (선택)
+{% endcomment %}
+<a href="{% url 'inquiries:detail' inq.inquiry_no %}" {% if new_tab %}target="_blank"{% endif %}
+   class="block px-3 py-2 rounded-md hover:bg-hover transition-colors">
+  <span class="flex items-center justify-between gap-2">
+    <span class="font-mono text-[11px] text-muted">{{ inq.inquiry_no }}</span>
+    {% include 'components/status_badge.html' with status=inq.status %}
+  </span>
+  <span class="mt-1 block text-[13px] font-medium truncate">{{ inq.title }}</span>
+  {% if note %}<span class="mt-0.5 block text-xs text-muted truncate">{{ note }}</span>{% endif %}
+</a>

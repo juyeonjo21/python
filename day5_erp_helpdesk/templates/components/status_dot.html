@@ -1,0 +1,6 @@
+{% comment %}
+  상태 색 점 (상태 배지와 같은 색) - 알약형 버튼 안에서 상태를 구분할 때 사용
+  사용: {% include 'components/status_dot.html' with status='CHECKING' %}
+{% endcomment %}
+<span class="w-1.5 h-1.5 rounded-full shrink-0
+  {% if status == 'RECEIVED' %}bg-gray-400{% elif status == 'CHECKING' %}bg-yellow-500{% elif status == 'IN_PROGRESS' %}bg-blue-500{% elif status == 'ANSWERED' %}bg-purple-500{% elif status == 'CLOSED' %}bg-green-500{% elif status == 'ON_HOLD' %}bg-orange-500{% elif status == 'REJECTED' %}bg-red-500{% endif %}" aria-hidden="true"></span>

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% comment %}
+  메일 발송 기록 (관리자 전용) - 지금은 자리만
+  이메일 단계에서 상태 필터·재발송 버튼 등을 추가합니다.
+{% endcomment %}
+
+{% block content %}
+  {% if page_obj.paginator.count %}
+    <div class="overflow-x-auto border border-line rounded-lg">
+      <table class="w-full text-sm">
+        <thead class="bg-sidebar text-xs text-muted text-left">
+          <tr>
+            <th class="px-3 py-2.5 font-medium">생성일시</th>
+            <th class="px-3 py-2.5 font-medium">받는 사람</th>
+            <th class="px-3 py-2.5 font-medium">제목</th>
+            <th class="px-3 py-2.5 font-medium">발송 사유</th>
+            <th class="px-3 py-2.5 font-medium">상태</th>
+            <th class="px-3 py-2.5 font-medium">재시도</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for log in page_obj %}
+            <tr>
+              <td class="px-3 py-2.5 text-muted whitespace-nowrap">{{ log.created_at|date:'Y-m-d H:i' }}</td>
+              <td class="px-3 py-2.5">{{ log.to }}</td>
+              <td class="px-3 py-2.5">{{ log.subject }}</td>
+              <td class="px-3 py-2.5 text-muted">{{ log.get_event_type_display }}</td>
+              <td class="px-3 py-2.5">{{ log.get_status_display }}</td>
+              <td class="px-3 py-2.5 text-muted">{{ log.retry_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include 'components/pagination.html' with page_obj=page_obj %}
+  {% else %}
+    {% include 'components/empty_state.html' with icon='mail' title='아직 메일 발송 기록이 없습니다' description='이메일 발송 기능은 다음 단계에서 연결됩니다. 연결되면 발송 성공·실패 내역이 여기에 표시됩니다.' %}
+  {% endif %}
+{% endblock %}

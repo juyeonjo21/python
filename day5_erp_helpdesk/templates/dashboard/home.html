@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% comment %}
+  홈 화면
+  - 공통: 인사말 + 새 문의 버튼 + 고정 공지(최대 3건)
+  - 일반 사용자: 내 문의 상태별 건수 카드 + 최근 문의 5건
+  - 담당자·관리자: 내 직무 미완료 / 미지정 / 오늘 등록 카드 + 내 직무 미완료 목록 (직무가 없으면 전체 미완료)
+{% endcomment %}
+
+{% block page_title %}
+  <span class="block mb-1 text-sm font-normal text-muted">{{ today|date:'n월 j일 l' }}</span>
+  안녕하세요, {{ user.name|default:user.username }}님
+{% endblock %}
+
+{% block actions %}
+  {% url 'inquiries:create' as create_url %}
+  <a href="{{ create_url }}" class="btn btn-primary h-11 px-5 text-[15px]"><i data-lucide="plus"></i>새 문의</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+
+  {# ── 고정 공지 ── #}
+  {% if pinned_notices %}
+    <section class="rounded-lg border border-line divide-y divide-line">
+      {% for notice in pinned_notices %}
+        <a href="{% url 'notices:detail' notice.pk %}" class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors first:rounded-t-lg last:rounded-b-lg">
+          <i data-lucide="pin" class="w-4 h-4 text-accent shrink-0"></i>
+          <span class="flex-1 min-w-0 truncate text-sm font-medium">{{ notice.title }}</span>
+          <span class="text-xs text-muted shrink-0">{{ notice.created_at|date:'Y-m-d' }}</span>
+        </a>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  {% if user.is_staff_member %}
+    {# ════════ 담당자·관리자 ════════ #}
+    <section class="grid sm:grid-cols-3 gap-4">
+      {% for c in cards %}
+        {% include 'components/card.html' with title=c.title value=c.value icon=c.icon description=c.description href=c.href %}
+      {% endfor %}
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-semibold">{{ my_title }} 문의</h2>
+        <a href="{{ my_href }}" class="text-sm text-muted hover:text-ink">전체 보기 →</a>
+      </div>
+      {% if my_open %}
+        <div class="card divide-y divide-line">
+          {% for inq in my_open %}
+            <a href="{% url 'inquiries:detail' inq.inquiry_no %}" class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors first:rounded-t-lg last:rounded-b-lg">
+              <span class="hidden sm:block font-mono text-xs text-muted w-28 shrink-0">{{ inq.inquiry_no }}</span>
+              <span class="flex-1 min-w-0">
+                <span class="block truncate text-sm font-medium">{{ inq.title }}</span>
+                <span class="block text-xs text-muted">{{ inq.category.name }} · {{ inq.requester.name }} · {{ inq.created_at|date:'m-d' }}</span>
+              </span>
+              {% include 'components/priority_badge.html' with priority=inq.priority %}
+              {% include 'components/status_badge.html' with status=inq.status %}
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'components/empty_state.html' with icon='party-popper' title='처리할 문의가 없습니다' description='미지정 문의를 확인해 보세요.' %}
+      {% endif %}
+    </section>
+
+  {% else %}
+    {# ════════ 일반 사용자 ════════ #}
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-semibold">내 문의 현황 <span class="ml-1 text-sm font-normal text-muted">전체 {{ total_mine }}건</span></h2>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {% for c in cards %}
+          {% include 'components/card.html' with title=c.title value=c.value icon=c.icon href=c.href %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-semibold">최근 문의</h2>
+        <a href="{% url 'inquiries:mine' %}" class="text-sm text-muted hover:text-ink">전체 보기 →</a>
+      </div>
+      {% if recent %}
+        <div class="card divide-y divide-line">
+          {% for inq in recent %}
+            <a href="{% url 'inquiries:detail' inq.inquiry_no %}" class="flex items-center gap-3 px-4 py-3 hover:bg-hover transition-colors first:rounded-t-lg last:rounded-b-lg">
+              <span class="hidden sm:block font-mono text-xs text-muted w-28 shrink-0">{{ inq.inquiry_no }}</span>
+              <span class="flex-1 min-w-0">
+                <span class="block truncate text-sm font-medium">{{ inq.title }}</span>
+                <span class="block text-xs text-muted">{{ inq.category.name }} · {{ inq.created_at|date:'Y-m-d' }}</span>
+              </span>
+              {% include 'components/status_badge.html' with status=inq.status %}
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% url 'inquiries:create' as create_url %}
+        {% include 'components/empty_state.html' with icon='inbox' title='아직 등록한 문의가 없습니다' description='ERP 사용 중 궁금한 점을 문의해 보세요.' action_label='새 문의' action_href=create_url %}
+      {% endif %}
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

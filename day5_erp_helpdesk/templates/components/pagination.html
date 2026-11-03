@@ -1,0 +1,61 @@
+{% comment %}
+  페이지 이동
+  사용: {% include 'components/pagination.html' with page_obj=page_obj %}
+  - page_obj: Django Paginator의 get_page() 결과
+  - 검색·필터 조건(?q=...&status=...)은 유지한 채 page 값만 바꿈 ({% querystring %})
+  - 현재 페이지 앞뒤 2쪽 + 첫/마지막 쪽을 보여주고, 사이는 … 으로 줄임
+{% endcomment %}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="flex items-center justify-between gap-4 mt-6" aria-label="페이지 이동">
+  <p class="hidden sm:block text-[13px] text-muted">
+    전체 {{ page_obj.paginator.count }}건 · {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 페이지
+  </p>
+
+  <ul class="flex items-center gap-1 mx-auto sm:mx-0 text-sm">
+    {# 이전 #}
+    <li>
+      {% if page_obj.has_previous %}
+        <a href="{% querystring page=page_obj.previous_page_number %}" class="flex items-center justify-center w-8 h-8 rounded-md hover:bg-hover" aria-label="이전 페이지">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i></a>
+      {% else %}
+        <span class="flex items-center justify-center w-8 h-8 text-line"><i data-lucide="chevron-left" class="w-4 h-4"></i></span>
+      {% endif %}
+    </li>
+
+    {# 첫 페이지 + … #}
+    {% if page_obj.number > 3 %}
+      <li><a href="{% querystring page=1 %}" class="flex items-center justify-center min-w-8 h-8 px-2 rounded-md hover:bg-hover">1</a></li>
+      {% if page_obj.number > 4 %}<li class="px-1 text-muted">…</li>{% endif %}
+    {% endif %}
+
+    {# 현재 페이지 앞뒤 2쪽 #}
+    {% for num in page_obj.paginator.page_range %}
+      {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+        <li>
+          {% if num == page_obj.number %}
+            <span class="flex items-center justify-center min-w-8 h-8 px-2 rounded-md bg-ink text-white font-medium" aria-current="page">{{ num }}</span>
+          {% else %}
+            <a href="{% querystring page=num %}" class="flex items-center justify-center min-w-8 h-8 px-2 rounded-md hover:bg-hover">{{ num }}</a>
+          {% endif %}
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {# … + 마지막 페이지 #}
+    {% if page_obj.number < page_obj.paginator.num_pages|add:'-2' %}
+      {% if page_obj.number < page_obj.paginator.num_pages|add:'-3' %}<li class="px-1 text-muted">…</li>{% endif %}
+      <li><a href="{% querystring page=page_obj.paginator.num_pages %}" class="flex items-center justify-center min-w-8 h-8 px-2 rounded-md hover:bg-hover">{{ page_obj.paginator.num_pages }}</a></li>
+    {% endif %}
+
+    {# 다음 #}
+    <li>
+      {% if page_obj.has_next %}
+        <a href="{% querystring page=page_obj.next_page_number %}" class="flex items-center justify-center w-8 h-8 rounded-md hover:bg-hover" aria-label="다음 페이지">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i></a>
+      {% else %}
+        <span class="flex items-center justify-center w-8 h-8 text-line"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+      {% endif %}
+    </li>
+  </ul>
+</nav>
+{% endif %}

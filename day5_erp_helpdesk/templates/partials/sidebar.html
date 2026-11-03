@@ -1,0 +1,75 @@
+{% comment %}
+  좌측 사이드바
+  - 1024px 이상: 항상 보임 (고정)
+  - 1024px 미만: 숨겨져 있다가 햄버거 버튼으로 열림 (base.html의 스크립트가 처리)
+  - 메뉴는 역할(user.is_staff_member, user.is_admin_role)에 따라 숨김
+{% endcomment %}
+<aside id="sidebar"
+       class="fixed inset-y-0 left-0 z-40 w-sidebar flex flex-col bg-sidebar border-r border-line
+              -translate-x-full lg:translate-x-0 transition-transform duration-200">
+
+  {# ── 시스템 이름 ── #}
+  <div class="flex items-center justify-between h-14 px-4">
+    <a href="{% url 'dashboard:home' %}" class="flex items-center gap-2 font-semibold text-[15px]">
+      <span class="flex items-center justify-center w-6 h-6 rounded bg-accent text-white">
+        <i data-lucide="life-buoy" class="w-4 h-4"></i>
+      </span>
+      ERP Helpdesk
+    </a>
+    <button type="button" class="lg:hidden p-1.5 rounded-md hover:bg-hover text-muted" aria-label="메뉴 닫기" data-sidebar-close>
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  </div>
+
+  {# ── 로그인 사용자 ── #}
+  <div class="flex items-center gap-2.5 mx-2 mb-3 px-2 py-2 rounded-md">
+    {% include 'components/avatar.html' with name=user.name|default:user.username %}
+    <div class="min-w-0">
+      <p class="text-sm font-medium truncate">{{ user.name|default:user.username }}</p>
+      <p class="text-xs text-muted truncate">{{ user.role_label }}{% if user.job %} · {{ user.get_job_display }}{% elif user.department %} · {{ user.department }}{% endif %}</p>
+    </div>
+  </div>
+
+  {# ── 새 문의 (강조 버튼) ── #}
+  <div class="px-3 mb-3">
+    <a href="{% url 'inquiries:create' %}"
+       class="btn btn-primary w-full {% if active_menu == 'create' %}ring-2 ring-accent/30{% endif %}">
+      <i data-lucide="plus"></i> 새 문의
+    </a>
+  </div>
+
+  {# ── 메뉴 ── #}
+  <nav class="flex-1 overflow-y-auto px-2 space-y-0.5 text-sm">
+    {% url 'dashboard:home' as url %}
+    {% include 'components/nav_item.html' with key='home' href=url icon='house' label='홈' %}
+
+    {% url 'inquiries:mine' as url %}
+    {% include 'components/nav_item.html' with key='mine' href=url icon='inbox' label='내 문의' %}
+
+    {% if user.is_staff_member %}
+      {% url 'inquiries:list' as url %}
+      {% include 'components/nav_item.html' with key='all' href=url icon='list-checks' label='전체 문의' %}
+    {% endif %}
+
+    {% url 'notices:list' as url %}
+    {% include 'components/nav_item.html' with key='notices' href=url icon='megaphone' label='공지사항' %}
+
+    {% if user.is_staff_member %}
+      {% url 'dashboard:stats' as url %}
+      {% include 'components/nav_item.html' with key='stats' href=url icon='chart-column' label='통계' %}
+    {% endif %}
+
+    {% if user.is_admin_role %}
+      {% url 'dashboard:manage' as url %}
+      {% include 'components/nav_item.html' with key='manage' href=url icon='settings' label='관리' %}
+    {% endif %}
+  </nav>
+
+  {# ── 로그아웃 (보안상 POST로 전송) ── #}
+  <form method="post" action="{% url 'accounts:logout' %}" class="p-2 border-t border-line">
+    {% csrf_token %}
+    <button type="submit" class="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-muted hover:bg-hover hover:text-ink">
+      <i data-lucide="log-out" class="w-4 h-4"></i> 로그아웃
+    </button>
+  </form>
+</aside>

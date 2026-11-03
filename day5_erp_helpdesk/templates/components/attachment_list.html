@@ -1,0 +1,49 @@
+{% comment %}
+  등록된 첨부파일 목록 - 이미지는 썸네일, 그 외 파일은 파일명 버튼
+  사용: {% include 'components/attachment_list.html' with attachments=inquiry_attachments size='lg' %}
+  - attachments: Attachment 목록
+  - size       : lg(문의 본문, 96px 썸네일) / sm(답변 카드, 64px 썸네일)
+  - 썸네일을 누르면 새 탭에서 원본 크기로 보기, 아래 아이콘으로 다운로드
+  - 이미지 주소·다운로드 모두 권한 검사를 거침 (views.attachment_view / attachment_download)
+{% endcomment %}
+{% load humanize %}
+<div class="space-y-2">
+  {# ── 이미지: 썸네일 ── (spaceless: 항목이 없으면 빈 목록이 되어 empty:hidden으로 숨김) #}
+  {% spaceless %}
+  <ul class="flex flex-wrap gap-2 empty:hidden">
+    {% for a in attachments %}{% if a.is_image %}
+      <li class="group relative">
+        <a href="{% url 'inquiries:attachment_view' a.pk %}" target="_blank" rel="noopener"
+           class="block overflow-hidden rounded-md border border-line bg-sidebar hover:border-accent focus-visible:ring-2 focus-visible:ring-accent/40
+                  {% if size == 'sm' %}w-16 h-16{% else %}w-24 h-24{% endif %}"
+           title="{{ a.original_name }} ({{ a.size|filesizeformat }}) - 누르면 크게 보기">
+          <img src="{% url 'inquiries:attachment_view' a.pk %}" alt="{{ a.original_name }}" loading="lazy"
+               class="w-full h-full object-cover">
+        </a>
+        <a href="{% url 'inquiries:attachment_download' a.pk %}"
+           class="absolute bottom-1 right-1 flex items-center justify-center w-6 h-6 rounded bg-canvas/90 border border-line text-muted
+                  opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-ink transition-opacity"
+           aria-label="{{ a.original_name }} 다운로드">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        </a>
+      </li>
+    {% endif %}{% endfor %}
+  </ul>
+  {% endspaceless %}
+
+  {# ── 그 외 파일: 파일명 버튼 ── #}
+  {% spaceless %}
+  <ul class="flex flex-wrap gap-2 empty:hidden">
+    {% for a in attachments %}{% if not a.is_image %}
+      <li>
+        <a href="{% url 'inquiries:attachment_download' a.pk %}"
+           class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-line bg-canvas text-xs hover:bg-hover">
+          <i data-lucide="paperclip" class="w-3.5 h-3.5 text-muted"></i>{{ a.original_name }}
+          <span class="text-muted">{{ a.size|filesizeformat }}</span>
+          <i data-lucide="download" class="w-3.5 h-3.5 text-muted"></i>
+        </a>
+      </li>
+    {% endif %}{% endfor %}
+  </ul>
+  {% endspaceless %}
+</div>

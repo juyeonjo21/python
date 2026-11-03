@@ -1,0 +1,23 @@
+{% comment %}
+  탭 (밑줄형)
+  사용: {% include 'components/tabs.html' with tabs=tabs %}
+  - tabs: [{'label': '접수', 'count': 6, 'url': '...', 'active': True}, ...]   count는 선택
+  - 화면이 좁으면 가로로 스크롤됨
+{% endcomment %}
+<nav class="-mx-4 sm:mx-0 px-4 sm:px-0 overflow-x-auto border-b border-line" aria-label="탭">
+  <ul class="flex gap-1 min-w-max">
+    {% for tab in tabs %}
+      <li>
+        <a href="{{ tab.url }}"
+           class="flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 text-sm whitespace-nowrap transition-colors
+                  {% if tab.active %}border-ink text-ink font-semibold{% else %}border-transparent text-muted hover:text-ink{% endif %}"
+           {% if tab.active %}aria-current="page"{% endif %}>
+          {{ tab.label }}
+          {% if tab.count is not None and tab.count != '' %}
+            <span class="min-w-5 px-1.5 rounded text-xs font-medium text-center {% if tab.active %}bg-ink text-white{% else %}bg-hover text-muted{% endif %}">{{ tab.count }}</span>
+          {% endif %}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</nav>

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% comment %}
+  공지사항 목록
+  - 검색어 입력·분류 선택 → HTMX로 목록(#notice-results)만 교체, 주소창에도 조건 반영
+  - 고정 공지는 항상 위 (모델 정렬: 고정 먼저 → 최신순)
+{% endcomment %}
+
+{% block actions %}
+  {% if user.is_staff_member %}
+    {% url 'notices:create' as create_url %}
+    {% include 'components/button.html' with label='공지 작성' icon='pencil' href=create_url %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <form method="get" action="{% url 'notices:list' %}" class="flex flex-col sm:flex-row gap-2"
+        hx-get="{% url 'notices:list' %}" hx-target="#notice-results" hx-swap="outerHTML"
+        hx-trigger="change, input[target.name=='q'] delay:400ms, submit" hx-sync="this:replace">
+    <div class="relative flex-1">
+      <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"></i>
+      <input type="search" name="q" value="{{ q }}" class="input pl-9" placeholder="제목·내용으로 검색" autocomplete="off" aria-label="검색">
+    </div>
+    <select name="category" class="input sm:w-44" aria-label="분류">
+      <option value="">분류 전체</option>
+      {% for value, label in categories %}
+        <option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  {% include 'notices/_list_results.html' %}
+{% endblock %}

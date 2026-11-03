@@ -1,0 +1,18 @@
+{% comment %}
+  카드 (요약 숫자·짧은 안내용)
+  사용: {% include 'components/card.html' with title='미처리 문의' value=12 icon='inbox' description='어제보다 3건 증가' href=url %}
+  - title      : 제목
+  - value      : 큰 숫자/글자 (선택)
+  - description: 아래 보조 설명 (선택)
+  - icon       : 오른쪽 위 아이콘 (선택)
+  - href       : 있으면 카드 전체가 링크
+  ※ 표·폼처럼 내용이 긴 카드는 <div class="card p-6"> ... </div> 로 직접 감싸서 쓰세요.
+{% endcomment %}
+<{% if href %}a href="{{ href }}"{% else %}div{% endif %} class="card block p-5{% if href %} hover:bg-sidebar transition-colors{% endif %}">
+  <div class="flex items-start justify-between gap-3">
+    <p class="text-sm text-muted">{{ title }}</p>
+    {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 text-muted shrink-0"></i>{% endif %}
+  </div>
+  {% if value is not None and value != '' %}<p class="mt-2 text-[28px] font-bold tracking-tight">{{ value }}</p>{% endif %}
+  {% if description %}<p class="mt-1 text-[13px] text-muted">{{ description }}</p>{% endif %}
+</{% if href %}a{% else %}div{% endif %}>

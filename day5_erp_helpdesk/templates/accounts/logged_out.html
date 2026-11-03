@@ -1,0 +1,17 @@
+{% extends 'accounts/_auth_layout.html' %}
+{% comment %} 로그아웃 완료 화면 (Django 기본 LogoutView 사용) {% endcomment %}
+
+{% block title %}로그아웃 · ERP Helpdesk{% endblock %}
+
+{% block card %}
+  <div class="text-center">
+    <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-green-50 text-green-600">
+      <i data-lucide="circle-check" class="w-6 h-6"></i>
+    </div>
+    <h1 class="text-xl font-bold">로그아웃되었습니다</h1>
+    <p class="mt-1 mb-6 text-sm text-muted">이용해 주셔서 감사합니다.</p>
+    <a href="{% url 'accounts:login' %}" class="btn btn-primary w-full h-10">
+      <i data-lucide="log-in"></i> 다시 로그인
+    </a>
+  </div>
+{% endblock %}

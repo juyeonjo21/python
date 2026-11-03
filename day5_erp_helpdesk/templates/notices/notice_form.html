@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% comment %} 공지 작성·수정 (담당자·관리자 전용) {% endcomment %}
+
+{% block content %}
+<form method="post" novalidate class="max-w-3xl space-y-5">
+  {% csrf_token %}
+  {% include 'components/form_field.html' with field=form.title %}
+
+  <div class="grid sm:grid-cols-2 gap-5">
+    {% include 'components/form_field.html' with field=form.category %}
+    {% include 'components/form_field.html' with field=form.inquiry_category %}
+  </div>
+
+  <div>
+    <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-medium">
+      {{ form.is_pinned }} {{ form.is_pinned.label }}
+    </label>
+    <p class="mt-1 ml-6 text-xs text-muted">{{ form.is_pinned.help_text }}</p>
+  </div>
+
+  {% include 'components/form_field.html' with field=form.content %}
+
+  <div class="flex items-center justify-end gap-2 pt-5 border-t border-line">
+    {% include 'components/button.html' with label='취소' variant='secondary' href=cancel_url %}
+    {% if notice %}
+      {% include 'components/button.html' with label='수정 저장' icon='check' type='submit' %}
+    {% else %}
+      {% include 'components/button.html' with label='등록' icon='send' type='submit' %}
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

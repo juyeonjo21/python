@@ -1,0 +1,9 @@
+{% comment %}
+  아바타 (이름 첫 글자 동그라미)
+  사용: {% include 'components/avatar.html' with name=user.name %}
+  - name: 이름 (첫 글자만 표시)
+  - size: sm / md(기본) / lg
+{% endcomment %}
+<span class="inline-flex items-center justify-center shrink-0 rounded-full bg-accent/10 text-accent font-semibold select-none
+             {% if size == 'sm' %}w-6 h-6 text-[11px]{% elif size == 'lg' %}w-10 h-10 text-base{% else %}w-8 h-8 text-sm{% endif %}"
+      title="{{ name }}" aria-hidden="true">{{ name|first|upper }}</span>

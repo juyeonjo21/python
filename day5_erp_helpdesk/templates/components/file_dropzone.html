@@ -1,0 +1,119 @@
+{% comment %}
+  파일 끌어다 놓기(드래그 앤 드롭) + 여러 파일 선택 + 목록에서 개별 삭제
+  사용: {% include 'components/file_dropzone.html' with name='attachments' accept=form.attachment_accept max_size_mb=10 max_files=10 errors=form.attachments.errors %}
+  - name       : 입력칸 이름
+  - accept     : 허용 확장자 (예: .jpg,.pdf)
+  - max_size_mb: 파일당 최대 크기(MB)
+  - max_files  : 최대 개수
+  - errors     : 서버 검사 오류 목록 (선택)
+  - compact    : True면 작은 크기 (입력창 안에 넣을 때)
+  ※ 브라우저에서 먼저 검사하지만, 최종 검사는 서버(forms.py)에서 다시 합니다.
+  ※ 등록 후 목록을 비우려면: 요소.dispatchEvent(new Event('dropzone:clear'))
+{% endcomment %}
+<div data-dropzone data-max-size="{{ max_size_mb }}" data-max-files="{{ max_files }}" data-accept="{{ accept }}">
+  <label class="flex {% if compact %}flex-row gap-2 px-4 py-3{% else %}flex-col gap-2 px-6 py-8{% endif %} items-center justify-center rounded-lg border-2 border-dashed border-line text-center cursor-pointer transition-colors
+                hover:bg-sidebar [&.is-dragover]:border-accent [&.is-dragover]:bg-accent/5" data-dropzone-area>
+    {% if compact %}
+      <i data-lucide="paperclip" class="w-4 h-4 text-muted"></i>
+    {% else %}
+    <span class="flex items-center justify-center w-10 h-10 rounded-full bg-sidebar text-muted">
+      <i data-lucide="upload" class="w-5 h-5"></i>
+    </span>
+    {% endif %}
+    <span class="text-sm"><span class="font-medium text-accent">파일 선택</span> 또는 여기로 끌어다 놓기</span>
+    <span class="text-xs text-muted">{% if not compact %}이미지·PDF·엑셀·워드·txt · {% endif %}파일당 {{ max_size_mb }}MB · 최대 {{ max_files }}개</span>
+    <input type="file" name="{{ name }}" multiple accept="{{ accept }}" class="sr-only" data-dropzone-input>
+  </label>
+
+  {# 고른 파일 목록 (스크립트가 채움) #}
+  <ul class="mt-3 space-y-1.5 empty:hidden" data-dropzone-list></ul>
+
+  {# 브라우저 검사 오류 #}
+  <p class="mt-2 text-[13px] text-red-600 hidden" data-dropzone-error></p>
+
+  {# 서버 검사 오류 #}
+  {% for error in errors %}
+    <p class="mt-1 flex items-center gap-1 text-[13px] text-red-600"><i data-lucide="circle-alert" class="w-3.5 h-3.5 shrink-0"></i>{{ error }}</p>
+  {% endfor %}
+</div>
+
+<script>
+  // 같은 화면에 여러 번 넣어도 한 번만 실행되도록
+  if (!window.__dropzoneReady) {
+    window.__dropzoneReady = true;
+    document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('[data-dropzone]').forEach(setupDropzone));
+  }
+
+  function setupDropzone(root) {
+    const input = root.querySelector('[data-dropzone-input]');
+    const area = root.querySelector('[data-dropzone-area]');
+    const list = root.querySelector('[data-dropzone-list]');
+    const errorBox = root.querySelector('[data-dropzone-error]');
+    const maxSize = Number(root.dataset.maxSize) * 1024 * 1024;
+    const maxFiles = Number(root.dataset.maxFiles);
+    const allowed = root.dataset.accept.split(',').map(s => s.trim().toLowerCase());
+    let files = [];  // 현재 고른 파일들
+
+    const formatSize = (b) => b >= 1048576 ? (b / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(b / 1024)) + 'KB';
+
+    function addFiles(newFiles) {
+      const problems = [];
+      for (const f of newFiles) {
+        const ext = '.' + f.name.split('.').pop().toLowerCase();
+        if (!allowed.includes(ext)) problems.push(`${f.name}: 허용되지 않는 형식`);
+        else if (f.size > maxSize) problems.push(`${f.name}: ${root.dataset.maxSize}MB 초과`);
+        else if (files.length >= maxFiles) problems.push(`${f.name}: 최대 ${maxFiles}개까지`);
+        else if (!files.some(x => x.name === f.name && x.size === f.size)) files.push(f);  // 같은 파일 중복 방지
+      }
+      errorBox.textContent = problems.join(' · ');
+      errorBox.classList.toggle('hidden', problems.length === 0);
+      sync();
+    }
+
+    // 이미지 미리보기 주소 (브라우저 안에서만 쓰는 임시 주소, 서버로 보내지 않음)
+    let previewUrls = [];
+    const isImage = (f) => /^image\/(jpeg|png|gif|webp)$/.test(f.type);
+
+    // 화면 목록과 실제 <input type=file>의 파일을 맞춤
+    function sync() {
+      const dt = new DataTransfer();
+      files.forEach(f => dt.items.add(f));
+      input.files = dt.files;
+
+      previewUrls.forEach(url => URL.revokeObjectURL(url));  // 이전 미리보기 주소 정리 (메모리)
+      previewUrls = [];
+      list.innerHTML = '';
+      files.forEach((f, i) => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-2.5 px-2 py-1.5 rounded-md border border-line text-sm';
+        // 이미지면 썸네일, 아니면 클립 아이콘
+        const thumb = isImage(f)
+          ? '<img class="w-10 h-10 rounded object-cover border border-line shrink-0" alt="">'
+          : '<span class="flex items-center justify-center w-10 h-10 rounded bg-sidebar shrink-0"><i data-lucide="paperclip" class="w-4 h-4 text-muted"></i></span>';
+        li.innerHTML = `${thumb}
+          <span class="flex-1 truncate"></span>
+          <span class="text-xs text-muted shrink-0">${formatSize(f.size)}</span>
+          <button type="button" class="p-1 rounded hover:bg-hover text-muted hover:text-red-600"><i data-lucide="x" class="w-4 h-4"></i></button>`;
+        if (isImage(f)) {
+          const url = URL.createObjectURL(f);
+          previewUrls.push(url);
+          const img = li.querySelector('img');
+          img.src = url;
+          img.alt = f.name + ' 미리보기';
+        }
+        li.querySelector('span.flex-1').textContent = f.name;  // 파일 이름은 글자로만 넣음 (안전)
+        const removeBtn = li.querySelector('button');
+        removeBtn.setAttribute('aria-label', f.name + ' 삭제');
+        removeBtn.addEventListener('click', () => { files.splice(i, 1); sync(); });
+        list.appendChild(li);
+      });
+      if (window.lucide) lucide.createIcons();
+    }
+
+    input.addEventListener('change', () => addFiles([...input.files]));
+    root.addEventListener('dropzone:clear', () => { files = []; errorBox.classList.add('hidden'); sync(); });
+    ['dragenter', 'dragover'].forEach(ev => area.addEventListener(ev, e => { e.preventDefault(); area.classList.add('is-dragover'); }));
+    ['dragleave', 'drop'].forEach(ev => area.addEventListener(ev, e => { e.preventDefault(); area.classList.remove('is-dragover'); }));
+    area.addEventListener('drop', e => addFiles([...e.dataTransfer.files]));
+  }
+</script>

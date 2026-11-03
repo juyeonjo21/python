@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% comment %}
+  문의 등록 화면
+  - 왼쪽: 입력 폼 / 오른쪽: 참고 패널
+  - 1280px 미만: 참고 패널이 폼 위로 올라가고 접힌 상태로 시작
+    (1024~1279px은 사이드바 때문에 2단으로 두면 폼이 344px까지 좁아지기 때문)
+  - 카테고리 선택 → 추가 항목 + 참고 패널 갱신 (HTMX)
+  - 제목 입력 → 참고 패널(비슷한 문의) 갱신 (HTMX, 제목 입력칸의 hx-* 속성은 views.py에서 붙임)
+{% endcomment %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" novalidate id="inquiry-form">
+  {% csrf_token %}
+
+  <div class="grid xl:grid-cols-[minmax(0,1fr)_320px] gap-6 xl:gap-10 items-start">
+
+    {# ── 참고 패널 (1280px 미만: 폼 위, 접힘 / 1280px 이상: 오른쪽, 펼침·스크롤 따라옴) ── #}
+    <aside class="order-first xl:order-last xl:sticky xl:top-6">
+      <button type="button" class="xl:hidden flex items-center justify-between w-full px-4 py-3 rounded-lg border border-line text-sm font-medium"
+              aria-expanded="false" aria-controls="reference-body" data-reference-toggle>
+        <span class="flex items-center gap-1.5"><i data-lucide="lightbulb" class="w-4 h-4 text-accent"></i>참고 정보 <span class="font-normal text-muted">(공지·비슷한 문의)</span></span>
+        <i data-lucide="chevron-down" class="js-chevron w-4 h-4 text-muted transition-transform"></i>
+      </button>
+      <div id="reference-body" class="hidden xl:block mt-3 xl:mt-0">
+        {% include 'inquiries/_reference_panel.html' %}
+      </div>
+    </aside>
+
+    {# ── 입력 폼 ── #}
+    <div class="min-w-0 space-y-8">
+
+      {% if form.non_field_errors %}
+        <div class="px-4 py-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      {% if form.errors %}
+        <div class="flex items-center gap-2 px-4 py-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          <i data-lucide="circle-alert" class="w-4 h-4 shrink-0"></i>
+          입력 내용을 확인해 주세요.{% if files_lost %} 첨부파일은 보안상 다시 선택해야 합니다.{% endif %}
+        </div>
+      {% endif %}
+
+      {# 1. 작성자 정보 (읽기 전용) #}
+      <section>
+        <h2 class="text-sm font-semibold mb-2">작성자</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-2 px-4 py-3 rounded-lg bg-sidebar text-sm">
+          <div class="flex sm:block gap-3"><dt class="text-xs text-muted w-12 sm:w-auto">이름</dt><dd class="font-medium">{{ user.name|default:user.username }}</dd></div>
+          <div class="flex sm:block gap-3 min-w-0"><dt class="text-xs text-muted w-12 sm:w-auto">이메일</dt><dd class="truncate">{{ user.email|default:'-' }}</dd></div>
+          <div class="flex sm:block gap-3"><dt class="text-xs text-muted w-12 sm:w-auto">부서</dt><dd>{{ user.department.name|default:'-' }}</dd></div>
+        </dl>
+      </section>
+
+      {# 2. 카테고리 (카드형 선택) → 바꾸면 추가 항목·참고 패널 갱신 #}
+      <section>
+        <h2 class="label">카테고리 <span class="text-red-500">*</span></h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2"
+             hx-get="{% url 'inquiries:create_fields' %}" hx-trigger="change"
+             hx-target="#extra-fields" hx-swap="outerHTML" hx-include="[name=category], [name=title]">
+          {% for c in categories %}
+            <label class="card relative flex flex-col gap-1.5 p-3.5 cursor-pointer transition-colors hover:bg-sidebar
+                          has-[:checked]:border-accent has-[:checked]:bg-accent/5 has-[:checked]:ring-1 has-[:checked]:ring-accent
+                          has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40">
+              <input type="radio" name="category" value="{{ c.obj.pk }}" class="peer sr-only"
+                     {% if selected_category.pk == c.obj.pk %}checked{% endif %}>
+              <i data-lucide="{{ c.icon }}" class="w-5 h-5 text-muted peer-checked:text-accent"></i>
+              <span class="text-sm font-semibold">{{ c.obj.name }}</span>
+              <span class="text-xs text-muted leading-snug">{{ c.desc }}</span>
+              <i data-lucide="circle-check" class="absolute top-3 right-3 w-4 h-4 text-accent hidden peer-checked:block"></i>
+            </label>
+          {% endfor %}
+        </div>
+        {% for error in form.category.errors %}
+          <p class="mt-1 flex items-center gap-1 text-[13px] text-red-600"><i data-lucide="circle-alert" class="w-3.5 h-3.5 shrink-0"></i>{{ error }}</p>
+        {% endfor %}
+      </section>
+
+      {# 3. 카테고리별 추가 항목 #}
+      {% include 'inquiries/_extra_fields.html' %}
+
+      {# 4. 우선순위 (기본 '보통') #}
+      <section>
+        <h2 class="label">우선순위</h2>
+        <div class="inline-flex flex-wrap p-1 rounded-lg bg-sidebar gap-1">
+          {% for value, label in priorities %}
+            <label class="cursor-pointer">
+              <input type="radio" name="priority" value="{{ value }}" class="peer sr-only"
+                     {% if form.priority.value == value %}checked{% endif %}>
+              <span class="flex items-center h-8 px-3.5 rounded-md text-sm text-muted transition-colors hover:text-ink
+                           peer-checked:bg-canvas peer-checked:text-ink peer-checked:font-semibold peer-checked:shadow-sm
+                           peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40
+                           {% if value == 'URGENT' %}peer-checked:text-red-600{% endif %}">{{ label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <p class="mt-1.5 text-xs text-muted">업무가 멈출 정도라면 '긴급'을 선택해 주세요.</p>
+        {% for error in form.priority.errors %}<p class="mt-1 text-[13px] text-red-600">{{ error }}</p>{% endfor %}
+      </section>
+
+      {# 5. 제목·내용 #}
+      <section class="space-y-5">
+        {% include 'components/form_field.html' with field=form.title %}
+        {% include 'components/form_field.html' with field=form.content %}
+      </section>
+
+      {# 6. 첨부파일 #}
+      <section>
+        <h2 class="label">첨부파일</h2>
+        {% include 'components/file_dropzone.html' with name='attachments' accept=form.attachment_accept max_size_mb=10 max_files=10 errors=form.attachments.errors %}
+      </section>
+
+      {# 7. 버튼 #}
+      <div class="flex items-center justify-end gap-2 pt-6 border-t border-line">
+        {% url 'inquiries:mine' as mine_url %}
+        {% include 'components/button.html' with label='취소' variant='secondary' href=mine_url %}
+        <button type="submit" class="btn btn-primary min-w-24" data-submit>
+          <i data-lucide="send"></i> 등록
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block page_js %}
+<script>
+  // 모바일에서 참고 패널 열고 닫기
+  document.querySelector('[data-reference-toggle]').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', open);
+    document.getElementById('reference-body').classList.toggle('hidden', !open);
+    btn.querySelector('.js-chevron').classList.toggle('rotate-180', open);
+  });
+
+  // 등록 버튼 두 번 누름 방지
+  document.getElementById('inquiry-form').addEventListener('submit', () => {
+    const btn = document.querySelector('[data-submit]');
+    btn.disabled = true;
+    btn.textContent = '등록 중…';
+  });
+</script>
+{% endblock %}

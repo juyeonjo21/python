@@ -1,0 +1,62 @@
+{% comment %}
+  문의 등록 화면 오른쪽 참고 패널 (HTMX로 통째로 교체됨)
+  - ref_notices : 관련 공지 (선택한 카테고리 관련 → 상단 고정 순)
+  - ref_similar : 제목과 비슷한 과거 문의 (일반 사용자는 본인 문의만)
+  - oob=True    : 다른 요청의 응답에 끼워 보낼 때 (hx-swap-oob)
+{% endcomment %}
+<div id="reference-panel" class="space-y-6" {% if oob %}hx-swap-oob="true"{% endif %}>
+
+  {# ── 안내 ── #}
+  <section class="rounded-lg bg-sidebar p-4">
+    <p class="flex items-center gap-1.5 text-sm font-semibold"><i data-lucide="lightbulb" class="w-4 h-4 text-accent"></i>등록 전에 확인해 보세요</p>
+    <ul class="mt-2 space-y-1.5 text-[13px] text-muted list-disc pl-4">
+      <li>아래 공지나 비슷한 문의에 이미 답이 있는지 확인해 주세요.</li>
+      <li>오류는 <b class="font-medium text-ink">화면 이름·발생 시각·오류 메시지</b>를 함께 적으면 빨리 처리돼요.</li>
+      <li>화면 캡처를 첨부하면 확인이 쉬워요.</li>
+      <li>비밀번호 같은 개인정보는 적지 마세요.</li>
+    </ul>
+  </section>
+
+  {# ── 관련 공지사항 ── #}
+  <section>
+    <h2 class="flex items-center gap-1.5 text-sm font-semibold mb-2">
+      <i data-lucide="megaphone" class="w-4 h-4 text-muted"></i>
+      {% if selected_category %}{{ selected_category.name }} 관련 공지{% else %}공지사항{% endif %}
+    </h2>
+    {% if ref_notices %}
+      <ul class="space-y-1">
+        {% for notice in ref_notices %}
+          <li class="px-3 py-2 rounded-md hover:bg-hover">
+            <p class="flex items-center gap-1.5 text-[13px] font-medium">
+              {% if notice.is_pinned %}<i data-lucide="pin" class="w-3 h-3 text-accent shrink-0"></i>{% endif %}
+              <span class="truncate">{{ notice.title }}</span>
+            </p>
+            <p class="mt-0.5 text-xs text-muted line-clamp-2">{{ notice.content }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="px-3 py-2 text-[13px] text-muted">관련 공지가 없습니다.</p>
+    {% endif %}
+  </section>
+
+  {# ── 유사한 과거 문의 ── #}
+  <section>
+    <h2 class="flex items-center gap-1.5 text-sm font-semibold mb-2">
+      <i data-lucide="history" class="w-4 h-4 text-muted"></i>
+      {% if user.is_staff_member %}비슷한 과거 문의{% else %}내가 올린 비슷한 문의{% endif %}
+    </h2>
+    {% if not ref_title %}
+      <p class="px-3 py-2 text-[13px] text-muted">제목을 입력하면 비슷한 문의를 찾아 드려요.</p>
+    {% elif ref_similar %}
+      <ul class="space-y-1">
+        {% for inq in ref_similar %}
+          <li>{% include 'components/inquiry_mini.html' with inq=inq new_tab=True %}</li>
+        {% endfor %}
+      </ul>
+      <p class="mt-1 px-3 text-[11px] text-muted">새 탭에서 열립니다.</p>
+    {% else %}
+      <p class="px-3 py-2 text-[13px] text-muted">비슷한 문의가 없습니다.</p>
+    {% endif %}
+  </section>
+</div>

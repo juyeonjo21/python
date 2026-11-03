@@ -1,0 +1,14 @@
+{% comment %}
+  우선순위 배지
+  사용: {% include 'components/priority_badge.html' with priority=inquiry.priority %}
+  - priority: LOW / NORMAL / HIGH / URGENT
+{% endcomment %}
+{% if priority == 'LOW' %}
+  {% with cls='text-muted' icon='arrow-down' text='낮음' %}{% include 'components/_badge.html' %}{% endwith %}
+{% elif priority == 'NORMAL' %}
+  {% with cls='text-ink' icon='minus' text='보통' %}{% include 'components/_badge.html' %}{% endwith %}
+{% elif priority == 'HIGH' %}
+  {% with cls='bg-orange-50 text-orange-700' icon='arrow-up' text='높음' %}{% include 'components/_badge.html' %}{% endwith %}
+{% elif priority == 'URGENT' %}
+  {% with cls='bg-red-600 text-white' icon='flame' text='긴급' %}{% include 'components/_badge.html' %}{% endwith %}
+{% endif %}

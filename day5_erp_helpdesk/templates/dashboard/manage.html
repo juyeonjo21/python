@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% comment %} 관리 메뉴 (관리자 전용) - 대부분 Django Admin으로 연결 {% endcomment %}
+
+{% block content %}
+  <p class="-mt-4 mb-6 text-sm text-muted">사용자·부서·카테고리는 Django Admin에서 관리합니다. 삭제 대신 '비활성화'를 사용하세요.</p>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for c in cards %}
+      {% include 'components/card.html' with title=c.title value=c.value icon=c.icon description=c.description href=c.href %}
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% comment %}
+  배지 모양 공통 틀 (status_badge, priority_badge 내부에서만 사용)
+  cls: 배경·글자색, dot: 점 색(없으면 생략), icon: 아이콘(선택), text: 기본 글자, label: 바꿔 쓸 글자
+{% endcomment %}
+<span class="inline-flex items-center gap-1.5 h-6 px-2 rounded text-xs font-medium whitespace-nowrap {{ cls }}">
+  {% if icon %}<i data-lucide="{{ icon }}" class="w-3 h-3"></i>{% elif dot %}<span class="w-1.5 h-1.5 rounded-full {{ dot }}"></span>{% endif %}
+  {{ label|default:text }}
+</span>

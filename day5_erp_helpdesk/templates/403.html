@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% comment %} 접근 권한이 없을 때 보여주는 화면 (PermissionDenied 발생 시 Django가 자동으로 사용) {% endcomment %}
+
+{% block title %}접근 권한 없음 · ERP Helpdesk{% endblock %}
+{% block page_title %}접근 권한 없음{% endblock %}
+
+{% block content %}
+  {% url 'dashboard:home' as home_url %}
+  <div class="flex flex-col items-center justify-center text-center px-6 py-16 border border-dashed border-line rounded-lg">
+    <div class="flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-red-50 text-red-600">
+      <i data-lucide="shield-alert" class="w-6 h-6"></i>
+    </div>
+    <p class="font-semibold">이 화면을 볼 권한이 없습니다</p>
+    <p class="mt-1 text-sm text-muted">필요하다면 관리자에게 권한을 요청해 주세요.</p>
+    <div class="mt-5">
+      {% include 'components/button.html' with label='홈으로' href=home_url icon='house' variant='secondary' %}
+    </div>
+  </div>
+{% endblock %}

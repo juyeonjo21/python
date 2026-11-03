@@ -1,0 +1,33 @@
+{% comment %} 공지 목록 부분 (HTMX로 교체되는 영역). 페이지 링크는 hx-boost로 이 영역만 교체 {% endcomment %}
+<div id="notice-results" class="mt-5" hx-target="#notice-results" hx-swap="outerHTML">
+  {% if page_obj.paginator.count %}
+    <ul class="border border-line rounded-lg divide-y divide-line">
+      {% for notice in page_obj %}
+        <li>
+          <a href="{% url 'notices:detail' notice.pk %}"
+             class="flex items-center gap-3 px-4 py-3.5 hover:bg-hover transition-colors {% if notice.is_pinned %}bg-sidebar{% endif %}">
+            {% if notice.is_pinned %}
+              <i data-lucide="pin" class="w-4 h-4 text-accent shrink-0" aria-label="고정"></i>
+            {% else %}
+              <i data-lucide="file-text" class="w-4 h-4 text-muted shrink-0"></i>
+            {% endif %}
+            <span class="flex-1 min-w-0">
+              <span class="flex items-center gap-2">
+                {% if notice.category %}<span class="shrink-0 h-5 px-1.5 rounded bg-hover text-[11px] leading-5 text-muted">{{ notice.get_category_display }}</span>{% endif %}
+                <span class="truncate text-sm {% if notice.is_pinned %}font-semibold{% else %}font-medium{% endif %}">{{ notice.title }}</span>
+              </span>
+              <span class="mt-0.5 block truncate text-xs text-muted">{{ notice.content|truncatechars:80 }}</span>
+            </span>
+            <span class="hidden sm:block text-xs text-muted shrink-0">{{ notice.author.name }}</span>
+            <span class="text-xs text-muted shrink-0">{{ notice.created_at|date:'Y-m-d' }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <div hx-boost="true">{% include 'components/pagination.html' with page_obj=page_obj %}</div>
+  {% elif has_filters %}
+    {% include 'components/empty_state.html' with icon='search-x' title='조건에 맞는 공지가 없습니다' description='검색어나 분류를 바꿔 보세요.' %}
+  {% else %}
+    {% include 'components/empty_state.html' with icon='megaphone' title='등록된 공지가 없습니다' %}
+  {% endif %}
+</div>

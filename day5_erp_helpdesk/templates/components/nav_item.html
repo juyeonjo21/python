@@ -1,0 +1,12 @@
+{% comment %}
+  사이드바 메뉴 한 줄
+  사용: {% include 'components/nav_item.html' with key='mine' href=url icon='inbox' label='내 문의' %}
+  - key가 view에서 넘긴 active_menu와 같으면 강조 표시
+{% endcomment %}
+<a href="{{ href }}"
+   class="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors
+          {% if key == active_menu %}bg-hover text-ink font-semibold{% else %}text-muted hover:bg-hover hover:text-ink{% endif %}"
+   {% if key == active_menu %}aria-current="page"{% endif %}>
+  <i data-lucide="{{ icon }}" class="w-4 h-4 shrink-0"></i>
+  <span class="truncate">{{ label }}</span>
+</a>

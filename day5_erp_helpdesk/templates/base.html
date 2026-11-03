@@ -1,0 +1,108 @@
+{% extends 'base_root.html' %}
+{% comment %}
+  업무 화면 공통 레이아웃 = 좌측 사이드바 + 상단 영역(제목·경로·버튼) + 본문
+
+  각 화면에서 쓰는 방법:
+    {% extends 'base.html' %}
+    {% block actions %} 우측 상단 버튼 {% endblock %}
+    {% block content %} 본문 {% endblock %}
+
+  view에서 넘기는 값:
+    page_title  : 페이지 제목
+    breadcrumbs : [(이름, 주소), ...]  주소가 None이면 링크 없이 글자만
+    active_menu : 강조할 사이드바 메뉴 (home, create, mine, all, notices, stats)
+{% endcomment %}
+
+{% block body %}
+<div class="min-h-screen">
+
+  {# ── 사이드바 ── #}
+  {% include 'partials/sidebar.html' %}
+
+  {# 모바일·태블릿(1024px 미만)에서 사이드바가 열렸을 때 뒤를 어둡게 덮는 막 #}
+  <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/20 hidden lg:hidden" data-sidebar-close></div>
+
+  {# ── 본문 영역 (데스크톱에서는 사이드바 폭만큼 오른쪽으로) ── #}
+  <div class="lg:pl-60">
+
+    {# 모바일 상단 바: 햄버거 버튼 #}
+    <div class="lg:hidden sticky top-0 z-20 flex items-center gap-2 h-14 px-4 bg-canvas/90 backdrop-blur border-b border-line">
+      <button type="button" class="p-2 -ml-2 rounded-md hover:bg-hover" aria-label="메뉴 열기" data-sidebar-open>
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+      <span class="font-semibold text-sm">ERP Helpdesk</span>
+    </div>
+
+    <main class="max-w-content mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
+
+      {# ── 상단 영역: 경로 / 제목 / 우측 버튼 ── #}
+      <header class="mb-8">
+        {% block breadcrumb %}
+          {% if breadcrumbs %}
+          <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="flex flex-wrap items-center gap-1 text-[13px] text-muted">
+              {% for label, url in breadcrumbs %}
+                <li class="flex items-center gap-1">
+                  {% if url %}
+                    <a href="{{ url }}" class="hover:text-ink hover:underline">{{ label }}</a>
+                  {% else %}
+                    <span {% if forloop.last %}class="text-ink"{% endif %}>{{ label }}</span>
+                  {% endif %}
+                  {% if not forloop.last %}<i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>{% endif %}
+                </li>
+              {% endfor %}
+            </ol>
+          </nav>
+          {% endif %}
+        {% endblock %}
+
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 class="text-2xl sm:text-[28px] font-bold tracking-tight">{% block page_title %}{{ page_title }}{% endblock %}</h1>
+          <div class="flex flex-wrap items-center gap-2">{% block actions %}{% endblock %}</div>
+        </div>
+      </header>
+
+      {# ── 알림 메시지 (저장 완료 등) ── #}
+      {% if messages %}
+        <div class="space-y-2 mb-6">
+          {% for message in messages %}
+            <div class="flex items-center gap-2 px-4 py-3 rounded-md border text-sm
+                        {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700
+                        {% elif message.tags == 'warning' %}border-orange-200 bg-orange-50 text-orange-700
+                        {% elif message.tags == 'success' %}border-green-200 bg-green-50 text-green-800
+                        {% else %}border-line bg-sidebar text-ink{% endif %}">
+              <i data-lucide="{% if message.tags == 'error' %}circle-alert{% elif message.tags == 'success' %}circle-check{% else %}info{% endif %}" class="w-4 h-4 shrink-0"></i>
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // 1024px 미만에서 햄버거 버튼으로 사이드바 열고 닫기
+  (function () {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    function setOpen(open) {
+      sidebar.classList.toggle('-translate-x-full', !open);
+      backdrop.classList.toggle('hidden', !open);
+      document.body.classList.toggle('overflow-hidden', open);  // 열려 있을 때 뒤 화면 스크롤 막기
+    }
+
+    document.querySelectorAll('[data-sidebar-open]').forEach(el => el.addEventListener('click', () => setOpen(true)));
+    document.querySelectorAll('[data-sidebar-close]').forEach(el => el.addEventListener('click', () => setOpen(false)));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+    // 창을 넓히면 열림 상태 정리
+    window.matchMedia('(min-width: 1024px)').addEventListener('change', e => { if (e.matches) setOpen(false); });
+  })();
+</script>
+{% block page_js %}{% endblock %}
+{% endblock %}

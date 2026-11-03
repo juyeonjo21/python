@@ -1,0 +1,5 @@
+{# [HTMX 응답] 답변·코멘트 등록 후: 타임라인 + 속성 패널·상단 상태 배지·입력창 오류(oob) #}
+{% include 'inquiries/_timeline.html' %}
+{% include 'inquiries/_detail_panel.html' with oob=True %}
+{% include 'inquiries/_header_status.html' with oob=True %}
+<p id="composer-error" hx-swap-oob="true" class="text-[13px] text-red-600">{{ composer_error|default:'' }}</p>

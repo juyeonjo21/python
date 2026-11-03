@@ -1,0 +1,25 @@
+{% comment %}
+  카테고리별 추가 입력 항목 (카테고리 extra_fields에 정의된 것만, HTMX로 교체됨)
+  HTMX 응답일 때(oob=True)는 참고 패널도 함께 보내 오른쪽을 갱신합니다.
+{% endcomment %}
+<div id="extra-fields">
+  {% if form.extra_bound_fields %}
+    <section class="rounded-lg border border-line p-5 space-y-4">
+      <p class="flex items-center gap-1.5 text-sm font-semibold">
+        <i data-lucide="list-plus" class="w-4 h-4 text-muted"></i>{{ selected_category.name }} 추가 정보
+      </p>
+      <div class="grid sm:grid-cols-2 gap-4">
+        {% for field in form.extra_bound_fields %}
+          {# 여러 줄 입력칸은 한 줄 전체 사용 #}
+          <div class="{% if not field.field.widget.input_type %}sm:col-span-2{% endif %}">
+            {% include 'components/form_field.html' with field=field %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+</div>
+
+{% if oob %}
+  {% include 'inquiries/_reference_panel.html' %}
+{% endif %}

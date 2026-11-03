@@ -1,0 +1,4 @@
+{# 상단 제목 옆 상태 배지 (속성 변경·답변 등록 후 oob로 함께 갱신) #}
+<span id="header-status" class="inline-block align-middle ml-1" {% if oob %}hx-swap-oob="true"{% endif %}>
+  {% include 'components/status_badge.html' with status=inquiry.status %}
+</span>

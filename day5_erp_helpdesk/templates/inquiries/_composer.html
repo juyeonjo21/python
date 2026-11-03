@@ -1,0 +1,44 @@
+{% comment %}
+  문의 상세 - 하단 입력창
+  - 담당자·관리자: [답변] / [내부 메모] 선택 (내부 메모를 고르면 노란 배경)
+  - 일반 사용자: 코멘트만
+  - 등록에 성공하면 서버가 HX-Trigger: commentAdded를 보내고, 화면 스크립트가 입력창을 비움
+{% endcomment %}
+<form id="composer" method="post" enctype="multipart/form-data"
+      action="{% url 'inquiries:comment' inquiry.inquiry_no %}"
+      hx-post="{% url 'inquiries:comment' inquiry.inquiry_no %}" hx-encoding="multipart/form-data"
+      hx-target="#timeline" hx-swap="outerHTML" hx-disabled-elt="find button[type=submit]"
+      class="card p-4 space-y-3 transition-colors [&.is-internal]:bg-yellow-50 [&.is-internal]:border-yellow-200">
+  {% csrf_token %}
+
+  {% if comment_types|length > 1 %}
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="inline-flex p-1 rounded-lg bg-sidebar gap-1" role="tablist">
+        <label class="cursor-pointer">
+          <input type="radio" name="type" value="ANSWER" class="peer sr-only" checked>
+          <span class="flex items-center gap-1.5 h-8 px-3 rounded-md text-sm text-muted peer-checked:bg-canvas peer-checked:text-ink peer-checked:font-semibold peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40">
+            <i data-lucide="message-square-reply" class="w-4 h-4"></i>답변</span>
+        </label>
+        <label class="cursor-pointer">
+          <input type="radio" name="type" value="INTERNAL" class="peer sr-only">
+          <span class="flex items-center gap-1.5 h-8 px-3 rounded-md text-sm text-muted peer-checked:bg-yellow-100 peer-checked:text-yellow-900 peer-checked:font-semibold peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40">
+            <i data-lucide="lock" class="w-4 h-4"></i>내부 메모</span>
+        </label>
+      </div>
+      <p class="text-xs text-muted">내부 메모는 담당자·관리자에게만 보입니다.</p>
+    </div>
+  {% else %}
+    <input type="hidden" name="type" value="USER">
+    <p class="flex items-center gap-1.5 text-sm font-semibold"><i data-lucide="message-circle" class="w-4 h-4 text-muted"></i>코멘트 남기기</p>
+  {% endif %}
+
+  <textarea name="content" rows="4" class="input h-auto py-2.5 leading-relaxed" aria-label="내용"
+            placeholder="{% if comment_types|length > 1 %}요청자에게 보낼 답변 또는 담당자끼리 공유할 메모를 입력하세요.{% else %}담당자에게 추가로 전달할 내용을 입력하세요.{% endif %}"></textarea>
+
+  {% include 'components/file_dropzone.html' with name='attachments' accept=attachment_accept max_size_mb=10 max_files=10 compact=True %}
+
+  <div class="flex items-center justify-between gap-3">
+    <p id="composer-error" class="text-[13px] text-red-600"></p>
+    <button type="submit" class="btn btn-primary shrink-0"><i data-lucide="send"></i>등록</button>
+  </div>
+</form>
