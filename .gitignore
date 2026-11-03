@@ -2,3 +2,4 @@
 __pycache__/
 *.pyc
 day4_ocr/ocr_pj/output/
+.pytest_cache/
