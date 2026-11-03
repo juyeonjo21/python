@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OCR 분석 성적서 자동 작성</title>
+  <style>
+    :root {
+      --bg: #f4f6f9; --panel: #ffffff; --text: #1f2937; --muted: #6b7280; --line: #e5e7eb;
+      --accent: #1e3a8a; --soft: #eef2ff; --error: #b91c1c; --ok: #15803d; --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    .app { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+    header { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    header .tt { flex: 1; min-width: 260px; }
+    header h1 { margin: 0 0 4px; font-size: 20px; color: var(--accent); }
+    header .sub { font-size: 12px; color: var(--muted); }
+    input, select, textarea {
+      font: inherit; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+      outline: none; background: #fff; color: var(--text);
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    button, a.btn {
+      font: inherit; font-size: 14px; padding: 9px 16px; border: none; border-radius: 8px; cursor: pointer;
+      background: var(--accent); color: #fff; white-space: nowrap; text-decoration: none; display: inline-block;
+    }
+    button.secondary, a.btn.secondary { background: #e5e7eb; color: var(--text); }
+    button.ghost { background: transparent; color: var(--muted); padding: 4px 8px; }
+    button.ghost:hover { color: var(--error); }
+    button:disabled { opacity: .45; cursor: default; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+    .card h2 { margin: 0 0 12px; font-size: 15px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+    .card h2 .num {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff;
+      font-size: 12px; display: grid; place-items: center; flex: none;
+    }
+    .card h2 .right { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+    .card h2 .right button { padding: 4px 10px; font-size: 12px; }
+
+    /* ---------- 진행 현황 ---------- */
+    .progress { margin-top: 16px; display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: center; }
+    .overall .pct { font-size: 34px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .overall .msg { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 1.3em; }
+    .overall button { margin-top: 12px; width: 100%; padding: 12px; font-size: 15px; font-weight: 700; }
+    .steps { display: flex; flex-direction: column; gap: 12px; }
+    .step { display: grid; grid-template-columns: 24px 150px 1fr 110px; gap: 10px; align-items: center; font-size: 13px; }
+    .step .ico {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid #cbd5e1; display: grid; place-items: center;
+      font-size: 12px; font-weight: 700; color: #fff;
+    }
+    .step.run .ico { border-color: var(--accent); border-top-color: transparent; animation: spin .8s linear infinite; }
+    .step.done .ico { background: var(--ok); border-color: var(--ok); }
+    .step.done .ico::after { content: "✓"; }
+    .step.fail .ico { background: var(--error); border-color: var(--error); }
+    .step.fail .ico::after { content: "!"; }
+    .step .name { font-weight: 600; }
+    .step .cnt { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .bar { height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; display: flex; position: relative; }
+    .bar .ok { background: var(--ok); transition: width .3s; width: 0; }
+    .bar .wn { background: #f59e0b; transition: width .3s; width: 0; }
+    .bar .ng { background: var(--error); transition: width .3s; width: 0; }
+    .bar.indet::after {
+      content: ""; position: absolute; inset: 0; width: 35%;
+      background: linear-gradient(90deg, transparent, #93c5fd, transparent); animation: slide 1.2s ease-in-out infinite;
+    }
+    @keyframes slide { from { left: -35%; } to { left: 100%; } }
+    .big { height: 12px; margin-top: 14px; }
+
+    /* ---------- 업로드 구역 ---------- */
+    .uploads { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+    .drop {
+      display: block; padding: 26px 16px; text-align: center; border: 2px dashed #c7d2fe; border-radius: 12px;
+      cursor: pointer; color: var(--muted); background: #fafbff; transition: background .15s, border-color .15s;
+    }
+    .drop.over { background: var(--soft); border-color: var(--accent); }
+    .drop .icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
+    .drop strong { color: var(--accent); display: block; margin-bottom: 4px; }
+    .drop .hint { font-size: 12px; }
+    .drop.compact { padding: 12px; }
+    .drop.compact .icon, .drop.compact .hint { display: none; }
+    .drop.doc { border-color: #bbf7d0; background: #f7fdf9; }
+    .drop.doc.over { background: #ecfdf5; border-color: var(--ok); }
+    .drop.doc strong { color: var(--ok); }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; margin-top: 12px; max-height: 470px; overflow: auto; }
+    .thumb { position: relative; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #f8fafc; cursor: pointer; }
+    .thumb img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+    .thumb .cap { font-size: 11px; padding: 4px 6px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thumb .no { position: absolute; top: 6px; right: 6px; background: rgba(15,23,42,.75); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; }
+    .thumb .badge { position: absolute; top: 6px; left: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+    .thumb.run { border-color: #a5b4fc; }
+    .thumb.run img { opacity: .55; }
+    .thumb.done { border-color: #86efac; }
+    .thumb.warn { border-color: #fcd34d; }
+    .thumb.fail { border-color: #fca5a5; }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-weight: 600; }
+    .badge.wait { background: #f1f5f9; color: var(--muted); }
+    .badge.run { background: var(--soft); color: var(--accent); }
+    .badge.done, .badge.pass { background: #dcfce7; color: var(--ok); }
+    .badge.fail { background: #fef2f2; color: var(--error); }
+    .badge.warn { background: #fef3c7; color: var(--warn); }
+    .empty { font-size: 13px; color: var(--muted); text-align: center; padding: 14px 0 2px; }
+
+    .docfile { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; }
+    .docfile.off { opacity: .5; }
+    .docfile .fi { width: 36px; height: 44px; border-radius: 6px; background: #2b579a; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; flex: none; }
+    .docfile .meta { flex: 1; min-width: 0; }
+    .docfile .fn { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .docfile .st { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .switch { position: relative; width: 36px; height: 20px; flex: none; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch span { position: absolute; inset: 0; background: #cbd5e1; border-radius: 999px; cursor: pointer; transition: .15s; }
+    .switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .15s; }
+    .switch input:checked + span { background: var(--accent); }
+    .switch input:checked + span::before { transform: translateX(16px); }
+
+    /* ---------- 확인 구역 ---------- */
+    .check { margin-top: 16px; }
+    .seg { display: inline-flex; background: #f1f5f9; border-radius: 9px; padding: 3px; gap: 2px; }
+    .seg button { background: transparent; color: var(--muted); padding: 6px 12px; font-size: 13px; border-radius: 7px; }
+    .seg button.on { background: #fff; color: var(--accent); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+    .tablewrap { max-height: 520px; overflow: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+    tbody tr:last-child td { border-bottom: none; }
+    td.num { font-variant-numeric: tabular-nums; text-align: right; }
+    td .src img { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; cursor: zoom-in; border: 1px solid var(--line); vertical-align: middle; }
+    td .fname { margin-left: 6px; color: var(--muted); font-size: 12px; }
+    td input { width: 120px; padding: 6px 8px; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+    td input.est, .photo-dlg input.est { background: #fffbeb; border-color: #f59e0b; }
+    td.note { color: var(--warn); font-size: 12px; max-width: 280px; }
+    .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px 14px; margin-top: 14px; }
+    .fields label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .fields label.wide { grid-column: 1 / -1; }
+    .fields input.virtual { background: #f8faff; border-style: dashed; border-color: #c7d2fe; }
+    .ainote { margin-top: 10px; font-size: 12px; color: var(--muted); background: #f8fafc; border-radius: 8px; padding: 8px 10px; }
+    .ainote b { color: var(--text); }
+
+    /* ---------- 결과 ---------- */
+    .result { margin-top: 16px; }
+    .placeholder { padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+    .chip { border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; min-width: 104px; }
+    .chip .l { font-size: 12px; color: var(--muted); }
+    .chip .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .doc-result { border: 1px solid var(--line); border-radius: 12px; margin-top: 10px; overflow: hidden; }
+    .doc-result .hd { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; flex-wrap: wrap; }
+    .doc-result .fi { width: 28px; height: 34px; border-radius: 5px; background: #2b579a; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 11px; flex: none; }
+    .doc-result .title { font-weight: 700; font-size: 14px; }
+    .doc-result .stats { font-size: 12px; color: var(--muted); }
+    .doc-result .acts { margin-left: auto; display: flex; gap: 6px; }
+    .doc-result .acts button, .doc-result .acts a.btn { padding: 5px 12px; font-size: 12px; }
+    .stale { margin-top: 12px; font-size: 13px; color: var(--warn); background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; }
+    .download {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding: 14px;
+      background: var(--soft); border-radius: 12px;
+    }
+    .download .lbl { font-size: 13px; font-weight: 600; }
+    .download .grow { flex: 1; }
+    .download .main { padding: 10px 22px; font-weight: 700; }
+    .download .fmtnote { width: 100%; font-size: 12px; color: var(--muted); }
+
+    dialog { border: none; border-radius: 14px; padding: 0; max-width: 94vw; max-height: 92vh; }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
+    .photo-dlg { display: grid; grid-template-columns: minmax(0, 1fr) 340px; max-height: 90vh; position: relative; }
+    .photo-dlg img { max-width: 62vw; max-height: 90vh; display: block; object-fit: contain; background: #0f172a; width: 100%; height: 100%; }
+    .photo-dlg .info { padding: 18px; overflow: auto; font-size: 13px; display: flex; flex-direction: column; gap: 10px; }
+    .photo-dlg .info h3 { margin: 0; font-size: 15px; padding-right: 50px; }
+    .photo-dlg .info label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .photo-dlg .info .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; font-size: 12px; }
+    .photo-dlg .info .kv span:nth-child(odd) { color: var(--muted); }
+    .photo-dlg .close { position: absolute; top: 12px; right: 12px; padding: 5px 10px; font-size: 12px; }
+    .pdf-dlg { width: 900px; max-width: 94vw; height: 90vh; display: flex; flex-direction: column; }
+    .pdf-dlg .bar2 { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+    .pdf-dlg .bar2 button { margin-left: auto; padding: 5px 12px; font-size: 12px; }
+    .pdf-dlg iframe { flex: 1; border: none; width: 100%; }
+    .name-dlg { width: 440px; max-width: 92vw; padding: 20px; }
+    .name-dlg h3 { margin: 0 0 4px; font-size: 16px; color: var(--accent); }
+    .name-dlg .sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    .namebox { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .namebox:focus-within { border-color: var(--accent); }
+    .namebox input { flex: 1; border: none; min-width: 0; }
+    .namebox span { padding: 0 12px; color: var(--muted); background: #f8fafc; align-self: stretch; display: grid; place-items: center; font-size: 13px; }
+    .nameerr { color: var(--error); font-size: 12px; min-height: 1.2em; margin-top: 6px; }
+    .name-dlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff;
+      padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10;
+    }
+    .toast.show { opacity: 1; }
+    @media (max-width: 900px) {
+      .uploads, .progress { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 24px 1fr auto; row-gap: 6px; }
+      .step .cnt { grid-row: 1; grid-column: 3; }
+      .step .bar { grid-row: 2; grid-column: 2 / 4; }
+      .photo-dlg { grid-template-columns: 1fr; }
+      .photo-dlg img { max-width: 94vw; max-height: 45vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="tt">
+        <h1>OCR 분석 성적서 자동 작성</h1>
+        <div class="sub">스펙트럼 분석기 화면에서 마커 주파수·전력을 읽어 워드 양식의 빈자리에 채우고 DOCX / PDF로 내려받습니다</div>
+        <div class="sub">OCR: macOS Vision (로컬 처리 · 외부 전송 없음) · 양식에 없는 항목은 추가하지 않습니다</div>
+      </div>
+      <button class="secondary" id="sampleBtn">📂 샘플 불러오기 (이미지 + report_template)</button>
+    </header>
+
+    <!-- 진행 현황 -->
+    <section class="card progress">
+      <div class="overall">
+        <div class="pct" id="pct">0%</div>
+        <div class="msg" id="msg">사진과 워드 양식을 올려 주세요</div>
+        <button id="runBtn" disabled>양식 채워서 생성</button>
+      </div>
+      <div>
+        <div class="steps">
+          <div class="step" id="st1"><span class="ico"></span><span class="name">① 사진 정보 추출</span><div class="bar"><div class="ok"></div><div class="wn"></div><div class="ng"></div></div><span class="cnt">0 / 0장</span></div>
+          <div class="step" id="st2"><span class="ico"></span><span class="name">② 워드 양식 분석</span><div class="bar"><div class="ok"></div><div class="wn"></div><div class="ng"></div></div><span class="cnt">대기</span></div>
+          <div class="step" id="st3"><span class="ico"></span><span class="name">③ 판정·양식 채우기</span><div class="bar"><div class="ok"></div><div class="wn"></div><div class="ng"></div></div><span class="cnt">대기</span></div>
+        </div>
+        <div class="bar big" id="bigBar"><div class="ok"></div></div>
+      </div>
+    </section>
+
+    <!-- 업로드 -->
+    <section class="uploads">
+      <div class="card">
+        <h2><span class="num">1</span>사진 업로드
+          <span class="right"><span id="photoCount">0장</span><button class="secondary" id="clearPhotos" hidden>모두 지우기</button></span>
+        </h2>
+        <label class="drop" id="photoDrop">
+          <input type="file" id="photoInput" accept="image/*" multiple hidden>
+          <div class="icon">📷</div>
+          <strong>사진을 끌어다 놓거나 클릭해서 선택</strong>
+          <div class="hint">스펙트럼 분석기 화면 캡처 · 여러 장 가능 · 사진을 누르면 크게 보고 값을 고칠 수 있습니다</div>
+        </label>
+        <div class="gallery" id="gallery"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">2</span>워드 양식 업로드
+          <span class="right"><span id="docCount">0개</span><button class="secondary" id="clearDocs" hidden>모두 지우기</button></span>
+        </h2>
+        <label class="drop doc" id="docDrop">
+          <input type="file" id="docInput" accept=".docx" multiple hidden>
+          <div class="icon">📄</div>
+          <strong>워드 양식(.docx)을 끌어다 놓거나 클릭해서 선택</strong>
+          <div class="hint">여러 개 가능 · {{항목}} 자리표시, 빈칸이 있는 표, "o 항목 :" 문단, XX%·x분 같은 자리만 채웁니다 (서식 유지)</div>
+        </label>
+        <div id="docList"></div>
+      </div>
+    </section>
+
+    <!-- 확인 -->
+    <section class="card check">
+      <h2><span class="num">3</span>추출값 · 기입 정보 확인
+        <span class="right"><span class="seg" id="tabSeg">
+          <button data-tab="rows" class="on">측정값 <span id="rowCnt"></span></button>
+          <button data-tab="fields">기입 정보</button>
+        </span></span>
+      </h2>
+      <div id="tab-rows">
+        <div class="ainote">값은 그대로 고칠 수 있습니다. <b style="color:var(--warn)">노란 칸</b>은 화면 표시가 가려져 그래프의 마커 위치로 추정한 값이니 확인해 주세요.</div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>No.</th><th>사진</th><th style="text-align:right">마커 주파수 (MHz)</th><th style="text-align:right">마커 전력 (µW)</th><th>출처</th><th>판정</th><th>비고</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="7" class="empty">사진을 올리면 추출된 값이 여기에 표시됩니다</td></tr></tbody>
+        </table></div>
+      </div>
+      <div id="tab-fields" hidden>
+        <div class="ainote">점선 칸은 양식의 빈 항목에 들어갈 <b>테스트용 가상 데이터</b>입니다. 실제 값으로 바꿔 입력할 수 있습니다. 특이사항을 비워 두면 FAIL 항목과 추정값 내역이 자동으로 들어갑니다.</div>
+        <div class="fields" id="fields"></div>
+      </div>
+    </section>
+
+    <!-- 결과 -->
+    <section class="card result">
+      <h2><span class="num">4</span>생성 결과 · 다운로드 <span class="right" id="resultStats"></span></h2>
+      <div id="results"><div class="placeholder">생성을 누르면 판정 요약과 채워진 문서가 여기에 표시됩니다.<br>문서별로 PDF 미리보기와 다운로드를 할 수 있습니다.</div></div>
+      <div class="stale" id="stale" hidden>값이 바뀌었습니다. 위의 <b>양식 채워서 생성</b>을 다시 눌러 반영해 주세요.</div>
+      <div class="download" id="downloadBar" hidden>
+        <span class="lbl">전체 받기</span>
+        <div class="seg" id="fmtSeg">
+          <button data-fmt="all" class="on">DOCX + PDF</button>
+          <button data-fmt="docx">DOCX</button>
+          <button data-fmt="pdf">PDF</button>
+        </div>
+        <span class="grow"></span>
+        <button class="main" id="zipBtn">ZIP 다운로드</button>
+        <div class="fmtnote">DOCX는 업로드한 양식을 그대로 복사해 빈자리만 채운 파일입니다. PDF는 Word 없이 변환해 굵은 글씨 등 일부 서식이 단순해질 수 있습니다.</div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="photoDlg"></dialog>
+  <dialog id="pdfDlg"><div class="pdf-dlg"><div class="bar2"><span id="pdfTitle">미리보기</span><button class="secondary" id="pdfClose">닫기</button></div><iframe id="pdfFrame" title="PDF 미리보기"></iframe></div></dialog>
+  <dialog id="nameDlg"><div class="name-dlg">
+    <h3>파일 이름 정하기</h3>
+    <div class="sub">내려받을 파일의 이름을 입력하세요. 확장자는 자동으로 붙습니다.</div>
+    <div class="namebox"><input id="nameInput" spellcheck="false" autocomplete="off"><span id="nameExt">.docx</span></div>
+    <div class="nameerr" id="nameErr"></div>
+    <div class="acts"><button class="secondary" id="nameCancel">취소</button><button id="nameOk">다운로드</button></div>
+  </div></dialog>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const CONCURRENCY = 3;
+    const FIELD_LABELS = {
+      doc_no: "문서번호", test_date: "시험일", test_name: "시험명", tester: "담당자 / 성명", reviewer: "검토자",
+      standard: "적용 규격", sample_name: "시료명", cf_db: "보정계수 CF (dB)", company: "기업명",
+      course: "훈련과정 명", period: "수행 기간", before_min: "기존 업무 소요 (분)", after_min: "현재 업무 소요 (분)",
+      acc_extract: "추출 정확도 (%) · 비우면 자동", acc_judge: "판정 정확도 (%) · 비우면 자동", remarks: "특이사항",
+    };
+    let sid = null, defaults = {}, photos = [], docs = [], result = null, stale = false, fmt = "all";
+    let pid = 0, docBusy = 0, genState = "wait";
+
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const fx = (v, d) => (v == null || v === "" ? "-" : Number(v).toFixed(d));
+    function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200); }
+    async function api(path, opts = {}) {
+      const r = await fetch(`/api/${sid}${path}`, opts);
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+      return r.json();
+    }
+
+    function setupDrop(dropEl, inputEl, onFiles) {
+      inputEl.addEventListener("change", () => { onFiles([...inputEl.files]); inputEl.value = ""; });
+      ["dragenter", "dragover"].forEach((e) => dropEl.addEventListener(e, (ev) => { ev.preventDefault(); dropEl.classList.add("over"); }));
+      ["dragleave", "drop"].forEach((e) => dropEl.addEventListener(e, (ev) => { ev.preventDefault(); dropEl.classList.remove("over"); }));
+      dropEl.addEventListener("drop", (ev) => onFiles([...ev.dataTransfer.files]));
+    }
+
+    // ---------------- 사진 ----------------
+    function statusOf(row) {
+      if (!row || row.freq_mhz == null || row.power_uw == null) return "fail";
+      return row.freq_source === "ocr" && row.power_source === "ocr" ? "done" : "warn";
+    }
+
+    function addPhotos(files) {
+      files = files.filter((f) => f.type.startsWith("image/"));
+      if (!files.length) return toast("이미지 파일만 올릴 수 있습니다");
+      for (const f of files) {
+        const old = photos.find((p) => p.name === f.name);
+        if (old) photos.splice(photos.indexOf(old), 1);
+        photos.push({ id: ++pid, name: f.name, file: f, url: URL.createObjectURL(f), status: "wait", row: null });
+      }
+      photos.sort((a, b) => a.name.localeCompare(b.name));
+      markStale(); renderAll(); extractQueue();
+    }
+
+    async function extractQueue() {
+      const worker = async () => {
+        let p;
+        while ((p = photos.find((x) => x.status === "wait"))) {
+          p.status = "run"; renderAll();
+          const fd = new FormData(); fd.append("files", p.file, p.name);
+          try {
+            const res = await api("/images", { method: "POST", body: fd });
+            p.row = res.rows[0];
+            p.status = statusOf(p.row);
+          } catch (e) { p.status = "fail"; p.row = { file: p.name, notes: ["추출 실패: " + e.message] }; }
+          renderAll();
+        }
+      };
+      await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+    }
+
+    function renderGallery() {
+      const g = $("gallery");
+      g.innerHTML = "";
+      $("photoCount").textContent = `${photos.length}장`;
+      $("clearPhotos").hidden = !photos.length;
+      $("photoDrop").classList.toggle("compact", photos.length > 0);
+      if (!photos.length) { g.innerHTML = '<div class="empty" style="grid-column:1/-1">아직 올린 사진이 없습니다</div>'; return; }
+      const label = { wait: "대기", run: "추출 중", done: "OCR", warn: "추정 포함", fail: "실패" };
+      photos.forEach((p, i) => {
+        const el = document.createElement("div");
+        el.className = "thumb " + p.status;
+        el.innerHTML = `<img alt=""><span class="badge ${p.status}">${label[p.status]}</span><span class="no">#${i + 1}</span><div class="cap"></div>`;
+        el.querySelector("img").src = p.url;
+        el.querySelector(".cap").textContent = p.row && p.row.freq_mhz != null ? `${fx(p.row.freq_mhz, 3)} MHz` : p.name;
+        el.title = p.name;
+        el.onclick = () => showPhoto(p);
+        g.appendChild(el);
+      });
+    }
+
+    function showPhoto(p) {
+      const dlg = $("photoDlg"), r = p.row || {};
+      const src = (k) => ({ ocr: "OCR", graph: "그래프 추정", manual: "수동 입력" }[k] || "-");
+      const vr = result?.rows.find((x) => x.file === p.name);
+      dlg.innerHTML = `<div class="photo-dlg"><img alt=""><div class="info">
+        <h3></h3>
+        <label>마커 주파수 (MHz) · ${src(r.freq_source)}<input type="number" step="0.001" data-k="freq_mhz" class="${r.freq_source === "graph" ? "est" : ""}"></label>
+        <label>마커 전력 (µW) · ${src(r.power_source)}<input type="number" step="0.01" data-k="power_uw" class="${r.power_source === "graph" ? "est" : ""}"></label>
+        <div class="kv">
+          <span>OCR 원문</span><span>${esc(r.ocr_freq || "-")} / ${esc(r.ocr_power || "-")}</span>
+          <span>Start / Stop</span><span>${fx(r.start_mhz, 3)} ~ ${fx(r.stop_mhz, 3)} MHz</span>
+          <span>판정</span><span>${vr ? `<span class="badge ${vr.verdict === "PASS" ? "pass" : "fail"}">${vr.verdict}</span> 마진 ${fx(vr.margin, 2)} dB` : "생성 후 표시"}</span>
+        </div>
+        ${(r.notes || []).length ? `<div class="ainote" style="color:var(--warn)">${r.notes.map(esc).join("<br>")}</div>` : ""}
+      </div><button class="secondary close">닫기</button></div>`;
+      dlg.querySelector("img").src = p.url;
+      dlg.querySelector("h3").textContent = p.name;
+      dlg.querySelectorAll("input").forEach((inp) => { inp.value = r[inp.dataset.k] ?? ""; inp.onchange = () => editValue(p, inp.dataset.k, inp.value); });
+      dlg.querySelector(".close").onclick = () => dlg.close();
+      dlg.onclick = (e) => { if (e.target === dlg) dlg.close(); };
+      dlg.showModal();
+    }
+
+    function editValue(p, key, val) {
+      p.row = p.row || { file: p.name, notes: [] };
+      p.row[key] = val === "" ? null : parseFloat(val);
+      const srcKey = key === "freq_mhz" ? "freq_source" : "power_source";
+      const word = key === "freq_mhz" ? "주파수" : "전력";
+      if (p.row[srcKey] !== "ocr") {
+        p.row[srcKey] = "manual";
+        p.row.notes = (p.row.notes || []).filter((n) => !n.includes(word)).concat(`${word} 수동 입력값`);
+      }
+      p.status = statusOf(p.row);
+      if (p.status === "warn" && p.row.freq_source !== "graph" && p.row.power_source !== "graph") p.status = "done";
+      markStale(); renderAll();
+    }
+
+    function renderRows() {
+      const tb = $("rows");
+      $("rowCnt").textContent = photos.length ? `(${photos.length})` : "";
+      if (!photos.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">사진을 올리면 추출된 값이 여기에 표시됩니다</td></tr>'; return; }
+      tb.innerHTML = "";
+      photos.forEach((p, i) => {
+        const r = p.row || {};
+        const vr = !stale && result ? result.rows.find((x) => x.file === p.name) : null;
+        const srcBadge = { wait: '<span class="badge wait">대기</span>', run: '<span class="badge run">추출 중</span>',
+          done: '<span class="badge done">OCR</span>', warn: '<span class="badge warn">추정 포함</span>', fail: '<span class="badge fail">실패</span>' }[p.status];
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${i + 1}</td>
+          <td><span class="src"><img alt=""></span><span class="fname"></span></td>
+          <td class="num"><input type="number" step="0.001" data-k="freq_mhz" class="${r.freq_source === "graph" ? "est" : ""}"></td>
+          <td class="num"><input type="number" step="0.01" data-k="power_uw" class="${r.power_source === "graph" ? "est" : ""}"></td>
+          <td>${srcBadge}</td>
+          <td>${vr ? `<span class="badge ${vr.verdict === "PASS" ? "pass" : "fail"}">${vr.verdict}</span>` : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="note"></td>`;
+        tr.querySelector("img").src = p.url;
+        tr.querySelector("img").onclick = () => showPhoto(p);
+        tr.querySelector(".fname").textContent = p.name;
+        tr.querySelector(".note").textContent = (r.notes || []).join(" / ");
+        tr.querySelectorAll("input").forEach((inp) => {
+          inp.value = r[inp.dataset.k] ?? "";
+          inp.disabled = p.status === "wait" || p.status === "run";
+          inp.onchange = () => editValue(p, inp.dataset.k, inp.value);
+        });
+        tb.appendChild(tr);
+      });
+    }
+
+    // ---------------- 양식 ----------------
+    async function addDocs(files) {
+      files = files.filter((f) => f.name.toLowerCase().endsWith(".docx"));
+      if (!files.length) return toast(".docx 파일만 올릴 수 있습니다");
+      const fd = new FormData(); files.forEach((f) => fd.append("files", f));
+      docBusy++; renderAll();
+      try { mergeDocs((await api("/templates", { method: "POST", body: fd })).templates); }
+      catch (e) { toast("양식 분석 실패: " + e.message); }
+      docBusy--; markStale(); renderAll();
+    }
+
+    function mergeDocs(list) {
+      for (const t of list) {
+        const old = docs.find((d) => d.name === t.name);
+        if (old) Object.assign(old, t); else docs.push({ ...t, on: true });
+      }
+      docs.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function renderDocs() {
+      const box = $("docList");
+      $("docCount").textContent = `${docs.length}개`;
+      $("clearDocs").hidden = !docs.length;
+      $("docDrop").classList.toggle("compact", docs.length > 0);
+      box.innerHTML = "";
+      if (!docs.length && !docBusy) { box.innerHTML = '<div class="empty">아직 올린 양식이 없습니다</div>'; return; }
+      docs.forEach((d) => {
+        const el = document.createElement("div");
+        el.className = "docfile" + (d.on ? "" : " off");
+        const n = (d.placeholders || []).length;
+        el.innerHTML = `<div class="fi">W</div><div class="meta"><div class="fn"></div>
+          <div class="st">${esc(d.kind)}${n ? ` · 자리표시 ${n}개` : ""}</div></div>
+          <label class="switch" title="생성에 포함"><input type="checkbox" ${d.on ? "checked" : ""}><span></span></label>
+          <button class="ghost" title="빼기">✕</button>`;
+        el.querySelector(".fn").textContent = d.name;
+        el.querySelector("input").onchange = (e) => { d.on = e.target.checked; markStale(); renderAll(); };
+        el.querySelector("button").onclick = () => { docs.splice(docs.indexOf(d), 1); markStale(); renderAll(); };
+        box.appendChild(el);
+      });
+      if (docBusy) box.insertAdjacentHTML("beforeend", '<div class="empty">양식 분석 중…</div>');
+    }
+
+    // ---------------- 기입 정보 ----------------
+    function buildFields() {
+      const f = $("fields");
+      for (const [k, label] of Object.entries(FIELD_LABELS)) {
+        const v = defaults[k] ?? "";
+        const el = document.createElement(k === "remarks" ? "textarea" : "input");
+        el.id = "f_" + k; el.value = v;
+        if (k === "remarks") { el.rows = 3; el.placeholder = "(비우면 자동 작성)"; }
+        if (k.startsWith("acc_")) el.placeholder = "자동 계산";
+        el.classList.toggle("virtual", !!v);
+        el.addEventListener("input", () => { el.classList.toggle("virtual", !!v && el.value === v); markStale(); renderProgress(); });
+        const lab = document.createElement("label");
+        lab.textContent = label; lab.appendChild(el);
+        if (k === "remarks") lab.className = "wide";
+        f.appendChild(lab);
+      }
+    }
+
+    // ---------------- 생성 ----------------
+    function markStale() { if (result) stale = true; }
+
+    async function generate() {
+      const ready = photos.filter((p) => p.row && p.status !== "fail");
+      const skipped = photos.length - ready.length;
+      const fields = {};
+      Object.keys(FIELD_LABELS).forEach((k) => (fields[k] = $("f_" + k).value));
+      genState = "run"; renderAll();
+      try {
+        result = await api("/generate", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rows: ready.map((p) => ({ file: p.name, freq_mhz: p.row.freq_mhz, power_uw: p.row.power_uw,
+              freq_source: p.row.freq_source, power_source: p.row.power_source, notes: p.row.notes || [] })),
+            fields, templates: docs.filter((d) => d.on).map((d) => d.name),
+          }),
+        });
+        stale = false; genState = "done";
+        toast(`${result.results.length}개 문서 생성 완료` + (skipped ? ` · 추출 실패 ${skipped}장 제외` : ""));
+      } catch (e) { genState = "fail"; toast("생성 실패: " + e.message); }
+      renderAll();
+    }
+
+    function renderResults() {
+      const box = $("results");
+      $("downloadBar").hidden = !result;
+      $("stale").hidden = !(result && stale);
+      if (!result) return;
+      const s = result.summary;
+      const est = result.rows.filter((r) => r.freq_source !== "ocr" || r.power_source !== "ocr").length;
+      $("resultStats").textContent = `생성 ${result.values.generated_at}`;
+      box.innerHTML = `<div class="chips">
+          <div class="chip"><div class="l">총 측정</div><div class="v">${s.total}</div></div>
+          <div class="chip"><div class="l">PASS</div><div class="v" style="color:var(--ok)">${s.pass_cnt}</div></div>
+          <div class="chip"><div class="l">FAIL</div><div class="v" style="color:var(--error)">${s.fail_cnt}</div></div>
+          <div class="chip"><div class="l">종합판정</div><div class="v" style="color:${s.verdict === "PASS" ? "var(--ok)" : "var(--error)"}">${esc(s.verdict)}</div></div>
+          <div class="chip"><div class="l">추정·수동 값</div><div class="v" style="color:var(--warn)">${est}</div></div>
+        </div><div id="docResults"></div>`;
+      const list = box.querySelector("#docResults");
+      result.results.forEach((d) => {
+        const el = document.createElement("div");
+        el.className = "doc-result";
+        el.innerHTML = `<div class="hd"><div class="fi">W</div><span class="title"></span>
+          <span class="badge ${d.kind === "placeholder" ? "run" : "done"}">${d.kind === "placeholder" ? "자리표시 치환" : "빈칸 채움"}</span>
+          ${d.pdf_error ? '<span class="badge fail">PDF 변환 실패</span>' : ""}
+          <span class="acts">
+            ${d.pdf_error ? "" : '<button class="secondary" data-act="pv">PDF 미리보기</button>'}
+            <button class="secondary" data-fmt="docx">DOCX</button>
+            ${d.pdf_error ? "" : '<button data-fmt="pdf">PDF</button>'}
+          </span></div>`;
+        el.querySelector(".title").textContent = d.name;
+        const pv = el.querySelector('[data-act="pv"]');
+        if (pv) pv.onclick = () => preview(d);
+        el.querySelectorAll("[data-fmt]").forEach((b) => b.onclick = async () => {
+          const f = b.dataset.fmt;
+          const name = await askName(d.name.replace(/\.docx$/, ""), f);
+          if (name) startDownload(`/api/${sid}/download/${d.id}.${f}?name=${encodeURIComponent(name)}`, `${name}.${f}`);
+        });
+        list.appendChild(el);
+      });
+    }
+
+    // ---------------- 파일명 팝업 ----------------
+    function askName(defName, ext) {
+      return new Promise((resolve) => {
+        const dlg = $("nameDlg"), inp = $("nameInput");
+        $("nameExt").textContent = "." + ext;
+        inp.value = defName;
+        $("nameErr").textContent = "";
+        const done = (v) => { dlg.close(); resolve(v); };
+        $("nameOk").onclick = () => {
+          const v = inp.value.trim().replace(new RegExp(`\\.${ext}$`, "i"), "");
+          if (!v) { inp.focus(); $("nameErr").textContent = "파일명을 입력해 주세요"; return; }
+          if (/[\\/:*?"<>|]/.test(v)) { inp.focus(); $("nameErr").textContent = '파일명에 \\ / : * ? " < > | 는 쓸 수 없습니다'; return; }
+          done(v);
+        };
+        $("nameCancel").onclick = () => done(null);
+        dlg.oncancel = (e) => { e.preventDefault(); done(null); };
+        inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); $("nameOk").click(); } };
+        dlg.showModal();
+        inp.focus(); inp.select();
+      });
+    }
+
+    function startDownload(url, label) {
+      const a = document.createElement("a");
+      a.href = url; document.body.appendChild(a); a.click(); a.remove();
+      toast(`다운로드 시작: ${label}`);
+    }
+
+    function preview(d) {
+      $("pdfTitle").textContent = d.name.replace(/\.docx$/, ".pdf");
+      $("pdfFrame").src = `/api/${sid}/download/${d.id}.pdf?inline=1`;
+      $("pdfDlg").showModal();
+    }
+
+    // ---------------- 진행 현황 ----------------
+    function setStep(id, state, okPct, wnPct, ngPct, cnt, indet) {
+      const el = $(id);
+      el.className = "step" + (state ? " " + state : "");
+      const bar = el.querySelector(".bar");
+      bar.classList.toggle("indet", !!indet);
+      bar.querySelector(".ok").style.width = okPct + "%";
+      bar.querySelector(".wn").style.width = wnPct + "%";
+      bar.querySelector(".ng").style.width = ngPct + "%";
+      el.querySelector(".cnt").textContent = cnt;
+    }
+
+    function renderProgress() {
+      const n = photos.length;
+      const c = (s) => photos.filter((p) => p.status === s).length;
+      const ok = c("done"), wn = c("warn"), ng = c("fail"), busy = c("wait") + c("run");
+      const fin = ok + wn + ng;
+      setStep("st1", !n ? "" : busy ? "run" : ng === n ? "fail" : "done",
+        n ? ok / n * 100 : 0, n ? wn / n * 100 : 0, n ? ng / n * 100 : 0, `${fin} / ${n}장`);
+
+      const on = docs.filter((d) => d.on).length;
+      setStep("st2", docBusy ? "run" : docs.length ? "done" : "", docs.length ? 100 : 0, 0, 0,
+        docBusy ? "분석 중" : docs.length ? `${on} / ${docs.length}개 선택` : "대기", !!docBusy);
+
+      const g = genState === "done" && !stale ? "done" : genState === "run" ? "run" : genState === "fail" ? "fail" : "";
+      setStep("st3", g, g === "done" ? 100 : 0, 0, g === "fail" ? 100 : 0,
+        g === "done" ? `${result.results.length}개 생성` : g === "run" ? "생성 중" : stale ? "다시 생성 필요" : "대기", g === "run");
+
+      const p1 = n ? fin / n : 0, p2 = docs.length ? 1 : 0, p3 = g === "done" ? 1 : 0;
+      const pct = Math.round((p1 * 0.4 + p2 * 0.2 + p3 * 0.4) * 100);
+      $("pct").textContent = pct + "%";
+      $("bigBar").querySelector(".ok").style.width = pct + "%";
+
+      const canRun = fin > 0 && !busy && on > 0 && genState !== "run" && ok + wn > 0;
+      $("runBtn").disabled = !canRun;
+      $("runBtn").textContent = result ? "다시 생성" : "양식 채워서 생성";
+      let msg;
+      if (!n && !docs.length) msg = "사진과 워드 양식을 올려 주세요";
+      else if (busy) msg = `사진 정보 추출 중… (${fin}/${n})`;
+      else if (!n) msg = "사진을 올려 주세요";
+      else if (!docs.length) msg = "워드 양식을 올려 주세요";
+      else if (!on) msg = "생성할 양식을 하나 이상 켜 주세요";
+      else if (genState === "run") msg = "판정하고 양식을 채우는 중…";
+      else if (g === "done") msg = "완료 — 아래에서 내려받으세요";
+      else if (stale) msg = "값이 바뀌었습니다 — 다시 생성해 주세요";
+      else msg = wn ? `준비 완료 · 추정값 ${wn}건은 확인 권장` : "준비 완료 — 생성을 눌러 주세요";
+      $("msg").textContent = msg;
+    }
+
+    function renderAll() { renderGallery(); renderDocs(); renderRows(); renderResults(); renderProgress(); }
+
+    // ---------------- 이벤트 ----------------
+    setupDrop($("photoDrop"), $("photoInput"), addPhotos);
+    setupDrop($("docDrop"), $("docInput"), addDocs);
+    $("runBtn").onclick = generate;
+    $("clearPhotos").onclick = () => { photos = []; markStale(); renderAll(); };
+    $("clearDocs").onclick = () => { docs = []; markStale(); renderAll(); };
+    $("pdfClose").onclick = () => { $("pdfDlg").close(); $("pdfFrame").src = "about:blank"; };
+    $("tabSeg").querySelectorAll("button").forEach((b) => b.onclick = () => {
+      $("tabSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      $("tab-rows").hidden = b.dataset.tab !== "rows";
+      $("tab-fields").hidden = b.dataset.tab !== "fields";
+    });
+    $("fmtSeg").querySelectorAll("button").forEach((b) => b.onclick = () => {
+      fmt = b.dataset.fmt;
+      $("fmtSeg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    });
+    $("zipBtn").onclick = async () => {
+      const d = new Date(), ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      const name = await askName(`OCR분석_성적서_${ymd}`, "zip");
+      if (name) startDownload(`/api/${sid}/download-all.zip?fmt=${fmt}&name=${encodeURIComponent(name)}`, `${name}.zip`);
+    };
+    $("sampleBtn").onclick = async () => {
+      const btn = $("sampleBtn"); btn.disabled = true;
+      setStep("st1", "run", 0, 0, 0, "불러오는 중", true);
+      docBusy++; renderDocs();
+      try {
+        const res = await api("/load-samples", { method: "POST" });
+        for (const r of res.rows) {
+          photos = photos.filter((p) => p.name !== r.file);
+          photos.push({ id: ++pid, name: r.file, url: `/api/${sid}/image/${encodeURIComponent(r.file)}`, row: r, status: statusOf(r) });
+        }
+        photos.sort((a, b) => a.name.localeCompare(b.name));
+        mergeDocs(res.templates.map((t) => ({ ...t, placeholders: [] })));
+        toast(`샘플 사진 ${res.rows.length}장 · 양식 ${res.templates.length}개를 불러왔습니다`);
+      } catch (e) { toast("샘플 불러오기 실패: " + e.message); }
+      docBusy--; btn.disabled = false; markStale(); renderAll();
+    };
+
+    (async () => {
+      sid = (await (await fetch("/api/session", { method: "POST" })).json()).sid;
+      defaults = await (await fetch("/api/defaults")).json();
+      buildFields(); renderAll();
+    })();
+  </script>
+</body>
+</html>
