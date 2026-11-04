@@ -1,0 +1,89 @@
+{% comment %}
+  알림 메일 공통 레이아웃 (HTML)
+  - 메일 프로그램(Outlook·Gmail 등) 호환을 위해 표(table) 배치 + 인라인 CSS만 사용
+  - 흰 배경, 최대 폭 600px, 상단 'ERP Helpdesk'
+  - 상황별 템플릿은 heading / content 블록만 채움
+  - 넣지 않는 것: 내부 메모, 첨부파일, 다른 사용자의 개인정보 (본문은 앞 200자 미리보기)
+{% endcomment %}<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background:#F7F7F5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F7F5;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:600px;background:#FFFFFF;border:1px solid #E9E9E7;border-radius:8px;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#37352F;">
+
+        {# ── 상단 ── #}
+        <tr>
+          <td style="padding:18px 28px;border-bottom:1px solid #E9E9E7;">
+            <span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:4px;background:#2383E2;color:#FFFFFF;font-size:12px;font-weight:700;text-align:center;vertical-align:middle;">E</span>
+            <span style="font-size:15px;font-weight:700;vertical-align:middle;margin-left:6px;">ERP Helpdesk</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:28px;">
+            {# ── 제목 + 상황별 본문 ── #}
+            <p style="margin:0 0 6px;font-size:13px;color:#787774;">{{ recipient_name }}님, 안녕하세요.</p>
+            <h1 style="margin:0 0 16px;font-size:20px;line-height:1.4;font-weight:700;color:#37352F;">{% block heading %}{% endblock %}</h1>
+            {% block content %}{% endblock %}
+
+            {# ── 문의 정보 ── #}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin:20px 0 0;border:1px solid #E9E9E7;border-radius:6px;font-size:14px;">
+              <tr>
+                <td style="padding:10px 14px;width:84px;color:#787774;border-bottom:1px solid #E9E9E7;">문의번호</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #E9E9E7;font-family:Menlo,Consolas,monospace;font-size:13px;">{{ inquiry.inquiry_no }}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 14px;color:#787774;border-bottom:1px solid #E9E9E7;">제목</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #E9E9E7;font-weight:600;">{{ inquiry.title }}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 14px;color:#787774;border-bottom:1px solid #E9E9E7;">카테고리</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #E9E9E7;">{{ inquiry.category.name }}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 14px;color:#787774;border-bottom:1px solid #E9E9E7;">상태</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #E9E9E7;">
+                  <span style="display:inline-block;padding:2px 8px;border-radius:4px;background:{{ status_bg }};color:{{ status_fg }};font-size:12px;font-weight:600;">{{ status_label }}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 14px;color:#787774;">요청자</td>
+                <td style="padding:10px 14px;">{{ requester_name }}{% if department_name %} <span style="color:#787774;">({{ department_name }})</span>{% endif %}</td>
+              </tr>
+            </table>
+
+            {% block preview %}{% endblock %}
+
+            {# ── 버튼 ── #}
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;">
+              <tr>
+                <td style="border-radius:6px;background:#2383E2;">
+                  <a href="{{ url }}" target="_blank" style="display:inline-block;padding:11px 20px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;">문의 확인하기</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:10px 0 0;font-size:12px;color:#787774;">버튼이 열리지 않으면 아래 주소를 복사해 주세요.<br><a href="{{ url }}" style="color:#2383E2;word-break:break-all;">{{ url }}</a></p>
+          </td>
+        </tr>
+
+        {# ── 하단 ── #}
+        <tr>
+          <td style="padding:16px 28px;border-top:1px solid #E9E9E7;background:#F7F7F5;border-radius:0 0 8px 8px;font-size:12px;line-height:1.6;color:#787774;">
+            이 메일은 ERP 문의 관리 시스템에서 자동으로 보낸 발신 전용 메일입니다.<br>
+            답장 대신 '문의 확인하기'에서 코멘트를 남겨 주세요.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,4 @@
+{% extends 'emails/_base.txt' %}
+{% block heading %}요청자가 코멘트를 남겼습니다.{% endblock %}
+{% block content %}■ {{ requester_name }}님의 코멘트
+{{ comment_body }}{% endblock %}

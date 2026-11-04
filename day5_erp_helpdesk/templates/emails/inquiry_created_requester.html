@@ -1,0 +1,4 @@
+{% extends 'emails/_base.html' %}
+{% block heading %}문의가 정상적으로 접수되었습니다{% endblock %}
+{% block content %}<p style="margin:0;font-size:14px;line-height:1.7;">ERP 담당자가 확인한 뒤 답변드리겠습니다.<br>처리 과정은 아래 '문의 확인하기'에서 언제든 볼 수 있어요.</p>{% endblock %}
+{% block preview %}{% include 'emails/_preview.html' %}{% endblock %}

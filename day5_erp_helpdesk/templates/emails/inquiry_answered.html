@@ -1,0 +1,7 @@
+{% extends 'emails/_base.html' %}
+{% block heading %}문의에 답변이 등록되었습니다{% endblock %}
+{% block content %}
+<p style="margin:0 0 6px;font-size:12px;color:#787774;">{{ answered_by }}의 답변</p>
+<div style="padding:14px 16px;border-left:3px solid #2383E2;border-radius:0 6px 6px 0;background:#F4F8FD;font-size:14px;line-height:1.7;color:#37352F;">{{ comment_body|linebreaksbr }}</div>
+<p style="margin:12px 0 0;font-size:13px;color:#787774;">해결되었는지 확인해 주시고, 추가로 궁금한 점은 문의 화면에서 코멘트로 남겨 주세요.</p>
+{% endblock %}

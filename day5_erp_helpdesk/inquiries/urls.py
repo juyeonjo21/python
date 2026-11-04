@@ -7,7 +7,6 @@ app_name = 'inquiries'
 urlpatterns = [
     path('', views.inquiry_list, name='list'),
     path('new/', views.inquiry_create, name='create'),
-    path('new/fields/', views.inquiry_form_fields, name='create_fields'),        # HTMX: 추가 항목
     path('new/reference/', views.inquiry_reference, name='create_reference'),  # HTMX: 참고 패널
     path('mine/', views.my_inquiries, name='mine'),
     path('attachments/<int:pk>/', views.attachment_download, name='attachment_download'),

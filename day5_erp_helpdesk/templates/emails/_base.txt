@@ -1,0 +1,23 @@
+{% autoescape off %}{% comment %}
+  알림 메일 공통 레이아웃 (텍스트) - HTML을 못 보는 메일 프로그램용
+  autoescape off: 텍스트 메일이라 & < > 같은 글자를 그대로 둠
+{% endcomment %}[ERP Helpdesk]
+
+{{ recipient_name }}님, 안녕하세요.
+{% block heading %}{% endblock %}
+
+{% block content %}{% endblock %}
+
+■ 문의 정보
+- 문의번호: {{ inquiry.inquiry_no }}
+- 제목: {{ inquiry.title }}
+- 카테고리: {{ inquiry.category.name }}
+- 상태: {{ status_label }}
+- 요청자: {{ requester_name }}{% if department_name %} ({{ department_name }}){% endif %}
+{% block preview %}{% endblock %}
+▶ 문의 확인하기: {{ url }}
+
+--
+이 메일은 ERP 문의 관리 시스템에서 자동으로 보낸 발신 전용 메일입니다.
+답장 대신 '문의 확인하기'에서 코멘트를 남겨 주세요.
+{% endautoescape %}

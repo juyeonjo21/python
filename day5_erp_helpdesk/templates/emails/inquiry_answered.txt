@@ -1,0 +1,6 @@
+{% extends 'emails/_base.txt' %}
+{% block heading %}문의에 답변이 등록되었습니다.{% endblock %}
+{% block content %}■ {{ answered_by }}의 답변
+{{ comment_body }}
+
+해결되었는지 확인해 주시고, 추가로 궁금한 점은 문의 화면에서 코멘트로 남겨 주세요.{% endblock %}

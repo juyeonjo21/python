@@ -146,4 +146,27 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
+# ------------------------------------------------------------
+# 이메일 (값은 모두 .env에서 읽음 - 비밀번호를 코드에 쓰지 않음)
+# ------------------------------------------------------------
+# 개발: 터미널에 메일 내용을 출력하는 콘솔 백엔드
+# 운영: django.core.mail.backends.smtp.EmailBackend 로 바꾸고 EMAIL_HOST 등을 채움
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='notifications.backends.ReadableConsoleEmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='localhost')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=10)  # 메일 서버가 응답하지 않을 때 기다리는 최대 시간(초)
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='ERP Helpdesk <no-reply@example.com>')
+
+# 개발용: 값이 있으면 모든 알림 메일을 이 주소 한 곳으로만 보냄 (제목 앞에 [원래 수신: 주소])
+# 운영에서는 반드시 비워 둘 것
+EMAIL_REDIRECT_TO = env('EMAIL_REDIRECT_TO', default='').strip()
+
+# 메일 속 '문의 확인하기' 링크의 앞부분 (예: http://127.0.0.1:8001)
+SITE_URL = env('SITE_URL', default='http://127.0.0.1:8001').rstrip('/')
+
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

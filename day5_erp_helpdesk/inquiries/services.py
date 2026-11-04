@@ -5,6 +5,8 @@ inquiries 앱 업무 처리 함수
 '문의 등록', '상태 변경'처럼 여러 테이블을 함께 바꾸는 업무 처리는 이 파일에 모아 둡니다.
 - 모든 변경은 History에 기록됩니다.
 - 메일 알림은 DB 저장이 확정된 뒤(transaction.on_commit) notifications.services의 함수를 부릅니다.
+  robust=True: 알림에서 오류가 나도 이미 저장된 업무 처리(화면 요청)는 성공으로 끝남
+- notify=False: 다른 처리 안에서 따라 바뀌는 경우(예: 답변 등록 → 답변 완료) 메일을 따로 보내지 않음
 - 입력이 업무 규칙에 맞지 않으면 ValidationError를 냅니다. (화면에서 받아 오류로 표시)
 """
 
@@ -74,7 +76,7 @@ def create_inquiry(*, requester, category, title, content, priority=Inquiry.Prio
         _log(inquiry, requester, History.Action.CREATE, to_value=S.RECEIVED.label)
 
         # DB 저장이 확정된 뒤에만 메일 발송 (저장이 취소되면 메일도 안 나감)
-        transaction.on_commit(lambda: notify_inquiry_created(inquiry))
+        transaction.on_commit(lambda: notify_inquiry_created(inquiry), robust=True)
 
     return inquiry
 
@@ -82,7 +84,7 @@ def create_inquiry(*, requester, category, title, content, priority=Inquiry.Prio
 # ------------------------------------------------------------
 # 상태 변경
 # ------------------------------------------------------------
-def change_status(inquiry, actor, new_status, reason=''):
+def change_status(inquiry, actor, new_status, reason='', notify=True):
     """
     상태를 바꾼다. 바뀌지 않았으면 아무것도 하지 않고 False를 돌려준다.
     - 보류·반려: 사유(reason) 필수 → resolution과 이력 메모에 저장
@@ -114,14 +116,16 @@ def change_status(inquiry, actor, new_status, reason=''):
             inquiry.closed_at = None
         inquiry.save()
         _log(inquiry, actor, History.Action.STATUS, S(old_status).label, S(new_status).label, memo=reason)
-        transaction.on_commit(lambda: notify_status_changed(inquiry, old_status, new_status))
+        if notify:
+            transaction.on_commit(
+                lambda: notify_status_changed(inquiry, old_status, new_status, actor), robust=True)
     return True
 
 
 # ------------------------------------------------------------
 # 담당 직무 지정
 # ------------------------------------------------------------
-def assign(inquiry, actor, job):
+def assign(inquiry, actor, job, notify=True):
     """
     담당 직무(백엔드/프론트/기획)를 바꾼다. (job='' 이면 미지정으로)
     직무를 지정했을 때 상태가 '접수'면 자동으로 '확인 중'으로 바꾼다.
@@ -138,9 +142,9 @@ def assign(inquiry, actor, job):
         inquiry.save()
         _log(inquiry, actor, History.Action.ASSIGN, _job_label(old), _job_label(job))
         if job and inquiry.status == S.RECEIVED:
-            change_status(inquiry, actor, S.CHECKING)
-        if job:
-            transaction.on_commit(lambda: notify_assigned(inquiry, job))
+            change_status(inquiry, actor, S.CHECKING, notify=False)  # 자동 변경은 상태 메일 없음
+        if job and notify:
+            transaction.on_commit(lambda: notify_assigned(inquiry, job, actor), robust=True)
     return True
 
 
@@ -204,11 +208,11 @@ def add_comment(inquiry, author, comment_type, content, files=()):
 
         if comment_type == Comment.Type.ANSWER:
             if not inquiry.assigned_job and author.job:
-                assign(inquiry, author, author.job)
+                assign(inquiry, author, author.job, notify=False)  # 답변 메일 1통만 보내기 위해
             if inquiry.status in AUTO_ANSWER_FROM:
-                change_status(inquiry, author, S.ANSWERED)
+                change_status(inquiry, author, S.ANSWERED, notify=False)
 
         inquiry.save(update_fields=['updated_at'])  # 목록의 '최근 업데이트' 갱신
         if comment_type != Comment.Type.INTERNAL:
-            transaction.on_commit(lambda: notify_comment_added(comment))
+            transaction.on_commit(lambda: notify_comment_added(comment), robust=True)
     return comment

@@ -1,0 +1,6 @@
+{% extends 'emails/_base.html' %}
+{% block heading %}요청자가 코멘트를 남겼습니다{% endblock %}
+{% block content %}
+<p style="margin:0 0 6px;font-size:12px;color:#787774;">{{ requester_name }}님의 코멘트</p>
+<div style="padding:14px 16px;border-left:3px solid #E9E9E7;border-radius:0 6px 6px 0;background:#F7F7F5;font-size:14px;line-height:1.7;color:#37352F;">{{ comment_body|linebreaksbr }}</div>
+{% endblock %}

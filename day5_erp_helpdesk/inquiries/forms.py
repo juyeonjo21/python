@@ -45,10 +45,6 @@ ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx',
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_COUNT = 10
 
-# datetime-local 입력칸이 보내는 형식 (예: 2026-11-03T14:30)
-DATETIME_LOCAL_FORMAT = '%Y-%m-%dT%H:%M'
-
-
 class MultipleFileInput(forms.ClearableFileInput):
     """파일 여러 개를 한 번에 고를 수 있는 입력칸"""
 
@@ -84,46 +80,12 @@ def validate_attachments(files):
     return files
 
 
-def build_extra_field(spec):
-    """
-    카테고리 extra_fields의 항목 정의(JSON 1개)로 Django 입력 필드를 만든다.
-    spec 예: {"key": "screen", "label": "ERP 화면명", "type": "text", "required": true,
-              "placeholder": "...", "options": [...]}
-    """
-    kind = spec.get('type', 'text')
-    common = {
-        'label': spec.get('label', spec['key']),
-        'required': bool(spec.get('required')),
-        'help_text': spec.get('help', ''),
-    }
-    attrs = {'placeholder': spec.get('placeholder', '')}
-
-    if kind == 'textarea':
-        return forms.CharField(widget=forms.Textarea(attrs={**attrs, 'rows': 3}), max_length=2000, **common)
-    if kind == 'select':
-        choices = [('', '선택하세요')] + [(o, o) for o in spec.get('options', [])]
-        return forms.ChoiceField(choices=choices, **common)
-    if kind == 'number':
-        return forms.IntegerField(widget=forms.NumberInput(attrs=attrs), **common)
-    if kind == 'date':
-        return forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'), **common)
-    if kind == 'datetime':
-        return forms.DateTimeField(
-            widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}, format=DATETIME_LOCAL_FORMAT),
-            input_formats=[DATETIME_LOCAL_FORMAT],
-            **common,
-        )
-    return forms.CharField(widget=forms.TextInput(attrs=attrs), max_length=200, **common)
-
-
 class InquiryCreateForm(forms.ModelForm):
     """
-    문의 등록 폼
-    - 기본 항목: 카테고리, 우선순위, 제목, 내용, 첨부파일
-    - 추가 항목: 선택한 카테고리의 extra_fields에 따라 'extra_<key>' 이름으로 자동 생성
+    문의 등록 폼 - 카테고리, 우선순위, 제목, 내용, 첨부파일
+    (카테고리별 추가 입력 항목은 내용 칸과 겹쳐서 받지 않음.
+     예전에 받은 값은 Inquiry.extra_data에 남아 있고 상세 화면에 표시됨)
     """
-
-    EXTRA_PREFIX = 'extra_'
 
     attachments = MultipleFileField(label='첨부파일', required=False)
 
@@ -141,7 +103,7 @@ class InquiryCreateForm(forms.ModelForm):
             'content': {'required': '내용을 입력해 주세요.'},
         }
 
-    def __init__(self, *args, category=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['category'].queryset = Category.objects.filter(is_active=True)
         self.fields['category'].empty_label = None
@@ -158,21 +120,11 @@ class InquiryCreateForm(forms.ModelForm):
             '- 원하는 결과: 정상적으로 저장되었으면 합니다'
         )
 
-        # 선택한 카테고리의 추가 항목 만들기
-        self.extra_specs = [s for s in (category.extra_fields if category else []) if s.get('key')]
-        for spec in self.extra_specs:
-            self.fields[self.EXTRA_PREFIX + spec['key']] = build_extra_field(spec)
-
         # 모든 입력칸에 공통 디자인 클래스(.input) 적용 (라디오·파일 제외)
         for field in self.fields.values():
             if not isinstance(field.widget, (forms.RadioSelect, forms.FileInput)):
                 css = 'input h-auto py-2.5 leading-relaxed' if isinstance(field.widget, forms.Textarea) else 'input'
                 field.widget.attrs['class'] = css
-
-    # 템플릿에서 추가 항목만 꺼내 쓰기 위한 목록
-    @property
-    def extra_bound_fields(self):
-        return [self[self.EXTRA_PREFIX + s['key']] for s in self.extra_specs]
 
     @property
     def attachment_accept(self):
@@ -187,18 +139,6 @@ class InquiryCreateForm(forms.ModelForm):
 
     def clean_attachments(self):
         return validate_attachments(self.cleaned_data.get('attachments'))
-
-    def get_extra_data(self):
-        """추가 항목 입력값을 JSON으로 저장할 수 있는 형태로 정리 {key: 값}"""
-        result = {}
-        for spec in self.extra_specs:
-            value = self.cleaned_data.get(self.EXTRA_PREFIX + spec['key'])
-            if value in (None, ''):
-                continue
-            if hasattr(value, 'strftime'):  # 날짜·일시는 글자로 바꿔 저장
-                value = value.strftime('%Y-%m-%d %H:%M' if spec.get('type') == 'datetime' else '%Y-%m-%d')
-            result[spec['key']] = value
-        return result
 
 
 # ============================================================

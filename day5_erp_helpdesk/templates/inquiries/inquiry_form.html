@@ -4,7 +4,7 @@
   - 왼쪽: 입력 폼 / 오른쪽: 참고 패널
   - 1280px 미만: 참고 패널이 폼 위로 올라가고 접힌 상태로 시작
     (1024~1279px은 사이드바 때문에 2단으로 두면 폼이 344px까지 좁아지기 때문)
-  - 카테고리 선택 → 추가 항목 + 참고 패널 갱신 (HTMX)
+  - 카테고리 선택 → 참고 패널(관련 공지) 갱신 (HTMX)
   - 제목 입력 → 참고 패널(비슷한 문의) 갱신 (HTMX, 제목 입력칸의 hx-* 속성은 views.py에서 붙임)
 {% endcomment %}
 
@@ -51,12 +51,12 @@
         </dl>
       </section>
 
-      {# 2. 카테고리 (카드형 선택) → 바꾸면 추가 항목·참고 패널 갱신 #}
+      {# 2. 카테고리 (카드형 선택) → 바꾸면 참고 패널 갱신 #}
       <section>
         <h2 class="label">카테고리 <span class="text-red-500">*</span></h2>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2"
-             hx-get="{% url 'inquiries:create_fields' %}" hx-trigger="change"
-             hx-target="#extra-fields" hx-swap="outerHTML" hx-include="[name=category], [name=title]">
+             hx-get="{% url 'inquiries:create_reference' %}" hx-trigger="change"
+             hx-target="#reference-panel" hx-swap="outerHTML" hx-include="[name=category], [name=title]">
           {% for c in categories %}
             <label class="card relative flex flex-col gap-1.5 p-3.5 cursor-pointer transition-colors hover:bg-sidebar
                           has-[:checked]:border-accent has-[:checked]:bg-accent/5 has-[:checked]:ring-1 has-[:checked]:ring-accent
@@ -75,10 +75,8 @@
         {% endfor %}
       </section>
 
-      {# 3. 카테고리별 추가 항목 #}
-      {% include 'inquiries/_extra_fields.html' %}
 
-      {# 4. 우선순위 (기본 '보통') #}
+      {# 3. 우선순위 (기본 '보통') #}
       <section>
         <h2 class="label">우선순위</h2>
         <div class="inline-flex flex-wrap p-1 rounded-lg bg-sidebar gap-1">
@@ -97,19 +95,19 @@
         {% for error in form.priority.errors %}<p class="mt-1 text-[13px] text-red-600">{{ error }}</p>{% endfor %}
       </section>
 
-      {# 5. 제목·내용 #}
+      {# 4. 제목·내용 #}
       <section class="space-y-5">
         {% include 'components/form_field.html' with field=form.title %}
         {% include 'components/form_field.html' with field=form.content %}
       </section>
 
-      {# 6. 첨부파일 #}
+      {# 5. 첨부파일 #}
       <section>
         <h2 class="label">첨부파일</h2>
         {% include 'components/file_dropzone.html' with name='attachments' accept=form.attachment_accept max_size_mb=10 max_files=10 errors=form.attachments.errors %}
       </section>
 
-      {# 7. 버튼 #}
+      {# 6. 버튼 #}
       <div class="flex items-center justify-end gap-2 pt-6 border-t border-line">
         {% url 'inquiries:mine' as mine_url %}
         {% include 'components/button.html' with label='취소' variant='secondary' href=mine_url %}

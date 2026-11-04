@@ -11,9 +11,10 @@ class EmailLog(models.Model):
 
     class EventType(models.TextChoices):
         CREATED = 'CREATED', '문의 등록'
-        ASSIGNED = 'ASSIGNED', '담당자 지정'
+        ASSIGNED = 'ASSIGNED', '직무 지정'
         STATUS_CHANGED = 'STATUS_CHANGED', '상태 변경'
         ANSWERED = 'ANSWERED', '답변 등록'
+        COMMENTED = 'COMMENTED', '사용자 코멘트'
 
     class Status(models.TextChoices):
         PENDING = 'PENDING', '대기'

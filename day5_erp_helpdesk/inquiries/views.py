@@ -483,7 +483,7 @@ def inquiry_create(request):
     category = _selected_category(request.POST if request.method == 'POST' else request.GET)
 
     if request.method == 'POST':
-        form = InquiryCreateForm(request.POST, request.FILES, category=category)
+        form = InquiryCreateForm(request.POST, request.FILES)
         if form.is_valid():
             data = form.cleaned_data
             inquiry = services.create_inquiry(
@@ -492,13 +492,12 @@ def inquiry_create(request):
                 priority=data['priority'],
                 title=data['title'],
                 content=data['content'],
-                extra_data=form.get_extra_data(),
                 files=data['attachments'],
             )
             messages.success(request, f'문의가 접수되었습니다 ({inquiry.inquiry_no})')
             return redirect('inquiries:detail', inquiry_no=inquiry.inquiry_no)
     else:
-        form = InquiryCreateForm(category=category, initial={'category': category})
+        form = InquiryCreateForm(initial={'category': category})
 
     # 제목을 입력하면 0.5초 뒤 참고 패널(유사 문의)을 HTMX로 갱신
     form.fields['title'].widget.attrs.update({
@@ -526,20 +525,8 @@ def inquiry_create(request):
     })
 
 
-def inquiry_form_fields(request):
-    """[HTMX] 카테고리를 바꾸면: 추가 입력 항목 + 참고 패널(oob)을 돌려줌"""
-    category = _selected_category(request.GET)
-    form = InquiryCreateForm(category=category)
-    return render(request, 'inquiries/_extra_fields.html', {
-        'form': form,
-        'selected_category': category,
-        'oob': True,
-        **_reference_context(request.user, category, request.GET.get('title', '')),
-    })
-
-
 def inquiry_reference(request):
-    """[HTMX] 제목을 입력하면: 참고 패널(관련 공지 + 유사 문의)을 돌려줌"""
+    """[HTMX] 카테고리를 고르거나 제목을 입력하면: 참고 패널(관련 공지 + 유사 문의)을 돌려줌"""
     category = _selected_category(request.GET)
     return render(request, 'inquiries/_reference_panel.html', {
         'selected_category': category,
