@@ -1,0 +1,8 @@
+{% comment %}
+  [HTMX 응답용] 화면 안의 배지 3곳을 한 번에 교체 (hx-swap-oob)
+  - 사이드바 벨 / 모바일 상단 바 벨 / 사이드바 '알림' 메뉴
+  60초 자동 갱신(/notifications/badge/)과 알림 패널 응답에 함께 실어 보냄
+{% endcomment %}
+{% include 'components/notification_badge.html' with id='notif-badge-sidebar' variant='bell' oob=True %}
+{% include 'components/notification_badge.html' with id='notif-badge-mobile' variant='bell' oob=True %}
+{% include 'components/notification_badge.html' with id='notif-badge-nav' variant='pill' oob=True %}

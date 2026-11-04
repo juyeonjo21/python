@@ -1,5 +1,5 @@
-# 가상환경
-.venv/
+# 가상환경 (.venv, .venv-1 처럼 이름이 달라도 제외)
+.venv*/
 venv/
 
 # 비밀 설정 (.env.example은 공유용이라 포함)

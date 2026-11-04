@@ -1,0 +1,16 @@
+{% comment %}
+  안 읽은 알림 개수 배지 (context processor의 unread_count / unread_display 사용)
+  사용: {% include 'components/notification_badge.html' with id='notif-badge-sidebar' variant='bell' %}
+  - id     : 60초 자동 갱신 때 이 id로 찾아 바꿈 (페이지 안에서 고유해야 함)
+  - variant: bell(벨 아이콘 오른쪽 위 빨간 숫자) / pill(메뉴 오른쪽 숫자)
+  - oob    : True면 HTMX 응답에서 같은 id 요소를 교체 (hx-swap-oob)
+  - 99개를 넘으면 '99+'
+{% endcomment %}
+<span id="{{ id }}" {% if oob %}hx-swap-oob="true"{% endif %}
+      class="{% if variant == 'bell' %}absolute -top-0.5 -right-0.5{% else %}ml-auto{% endif %} pointer-events-none">
+  {% if unread_display %}
+    <span class="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-semibold leading-none tabular-nums
+                 {% if variant == 'bell' %}ring-2 ring-sidebar{% endif %}" aria-hidden="true">{{ unread_display }}</span>
+    <span class="sr-only">안 읽은 알림 {{ unread_count }}개</span>
+  {% endif %}
+</span>

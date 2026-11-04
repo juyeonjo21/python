@@ -1,0 +1,56 @@
+{% comment %}
+  [HTMX] 벨을 눌렀을 때 뜨는 알림 패널 내용 (base.html의 #notif-panel-body 안에 들어감)
+  - 탭(전체/안 읽음)·[모두 읽음]은 이 패널만 다시 그림
+  - 응답 끝에 배지 3곳(oob)을 함께 보내 개수를 맞춤
+{% endcomment %}
+<div class="flex flex-col min-h-0 max-h-full">
+  {# ── 머리 ── #}
+  <div class="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2 shrink-0">
+    <h2 class="text-[15px] font-semibold" id="notif-panel-title">알림</h2>
+    <form hx-post="{% url 'notifications:read_all' %}" hx-target="#notif-panel-body" hx-swap="innerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <button type="submit" class="btn btn-secondary btn-sm" {% if not unread_count %}disabled{% endif %}>
+        <i data-lucide="check-check"></i>모두 읽음
+      </button>
+    </form>
+  </div>
+
+  {# ── 탭 ── #}
+  <div class="flex gap-1 px-4 border-b border-line shrink-0" role="tablist" aria-label="알림 보기">
+    <button type="button" role="tab" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}"
+            hx-get="{% url 'notifications:panel' %}?tab=all" hx-target="#notif-panel-body" hx-swap="innerHTML"
+            class="px-2.5 py-2 -mb-px border-b-2 text-sm {% if tab == 'all' %}border-ink text-ink font-semibold{% else %}border-transparent text-muted hover:text-ink{% endif %}">전체</button>
+    <button type="button" role="tab" aria-selected="{% if tab == 'unread' %}true{% else %}false{% endif %}"
+            hx-get="{% url 'notifications:panel' %}?tab=unread" hx-target="#notif-panel-body" hx-swap="innerHTML"
+            class="flex items-center gap-1.5 px-2.5 py-2 -mb-px border-b-2 text-sm {% if tab == 'unread' %}border-ink text-ink font-semibold{% else %}border-transparent text-muted hover:text-ink{% endif %}">
+      안 읽음
+      {% if unread_display %}<span class="min-w-5 px-1.5 rounded bg-red-500 text-white text-[11px] font-semibold leading-5 text-center">{{ unread_display }}</span>{% endif %}
+    </button>
+  </div>
+
+  {# ── 목록 (최근 10개) ── #}
+  <div class="flex-1 min-h-0 overflow-y-auto">
+    {% if items %}
+      <ul class="divide-y divide-line">
+        {% for n in items %}<li>{% include 'components/notification_item.html' with n=n %}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <div class="p-4">
+        {% if tab == 'unread' %}
+          {% include 'components/empty_state.html' with icon='bell-off' title='새 알림이 없습니다' description='모든 알림을 확인했어요.' %}
+        {% else %}
+          {% include 'components/empty_state.html' with icon='bell-off' title='새 알림이 없습니다' description='문의에 답변이나 상태 변경이 있으면 여기에 알려 드려요.' %}
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  {# ── 바닥 ── #}
+  <a href="{% url 'notifications:list' %}{% if tab == 'unread' %}?tab=unread{% endif %}"
+     class="flex items-center justify-center gap-1 px-4 py-3 border-t border-line text-sm font-medium text-accent hover:bg-hover shrink-0 lg:rounded-b-lg">
+    전체 알림 보기 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+  </a>
+</div>
+
+{% include 'notifications/_badges.html' %}

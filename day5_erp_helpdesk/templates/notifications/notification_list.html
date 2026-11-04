@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% comment %}
+  전체 알림 페이지 (/notifications/) - 본인 알림만
+  - 탭: 전체 / 안 읽음, 상황별 필터(알약형 버튼)
+  - 오늘 / 어제 / 이번 주 / 이전 으로 묶어서 표시, 페이지당 30개
+  - [모두 읽음]: POST + CSRF
+{% endcomment %}
+
+{% block actions %}
+  <form method="post" action="{% url 'notifications:read_all' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit" class="btn btn-secondary" {% if not unread_count %}disabled{% endif %}>
+      <i data-lucide="check-check"></i>모두 읽음
+    </button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  {% include 'components/tabs.html' with tabs=tabs %}
+
+  <div class="flex flex-wrap gap-1.5" role="group" aria-label="상황별 보기">
+    {% for f in filters %}
+      <a href="{{ f.url }}" class="pill {% if f.active %}pill-active{% endif %}" {% if f.active %}aria-current="true"{% endif %}>{{ f.label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if groups %}
+    {% for label, items in groups %}
+      <section aria-labelledby="group-{{ forloop.counter }}">
+        <h2 id="group-{{ forloop.counter }}" class="mb-2 text-xs font-semibold text-muted">{{ label }}</h2>
+        <ul class="card overflow-hidden divide-y divide-line">
+          {% for n in items %}<li>{% include 'components/notification_item.html' with n=n %}</li>{% endfor %}
+        </ul>
+      </section>
+    {% endfor %}
+    {% include 'components/pagination.html' with page_obj=page_obj %}
+  {% elif tab == 'unread' or event %}
+    {% include 'components/empty_state.html' with icon='bell-off' title='새 알림이 없습니다' description='조건에 맞는 알림이 없어요.' %}
+  {% else %}
+    {% include 'components/empty_state.html' with icon='bell-off' title='새 알림이 없습니다' description='문의에 답변이나 상태 변경이 있으면 여기에 알려 드려요.' %}
+  {% endif %}
+</div>
+{% endblock %}

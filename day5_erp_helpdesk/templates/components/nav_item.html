@@ -2,6 +2,7 @@
   사이드바 메뉴 한 줄
   사용: {% include 'components/nav_item.html' with key='mine' href=url icon='inbox' label='내 문의' %}
   - key가 view에서 넘긴 active_menu와 같으면 강조 표시
+  - badge_id(선택): 오른쪽에 안 읽은 알림 개수 배지 (60초마다 이 id로 교체)
 {% endcomment %}
 <a href="{{ href }}"
    class="flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors
@@ -9,4 +10,5 @@
    {% if key == active_menu %}aria-current="page"{% endif %}>
   <i data-lucide="{{ icon }}" class="w-4 h-4 shrink-0"></i>
   <span class="truncate">{{ label }}</span>
+  {% if badge_id %}{% include 'components/notification_badge.html' with id=badge_id variant='pill' %}{% endif %}
 </a>

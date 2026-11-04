@@ -1,0 +1,12 @@
+{% comment %}
+  알림 벨 버튼 - 누르면 알림 패널(base.html의 #notif-panel)이 열림
+  사용: {% include 'components/notification_bell.html' with badge_id='notif-badge-mobile' %}
+  - badge_id: 배지 id (사이드바·모바일 상단 바에 각각 하나씩 있어서 서로 달라야 함)
+  - 여닫기·키보드 처리는 base.html 스크립트가 [data-notif-toggle]로 처리
+{% endcomment %}
+<button type="button" data-notif-toggle
+        class="relative flex items-center justify-center w-9 h-9 rounded-md text-muted hover:bg-hover hover:text-ink transition-colors"
+        aria-label="알림" aria-haspopup="dialog" aria-expanded="false" aria-controls="notif-panel">
+  <i data-lucide="bell" class="w-5 h-5"></i>
+  {% include 'components/notification_badge.html' with id=badge_id variant='bell' %}
+</button>

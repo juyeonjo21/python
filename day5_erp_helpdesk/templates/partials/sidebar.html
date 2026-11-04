@@ -22,12 +22,14 @@
   </div>
 
   {# ── 로그인 사용자 ── #}
-  <div class="flex items-center gap-2.5 mx-2 mb-3 px-2 py-2 rounded-md">
+  <div class="flex items-center gap-2.5 mx-2 mb-3 pl-2 py-2 rounded-md">
     {% include 'components/avatar.html' with name=user.name|default:user.username %}
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1">
       <p class="text-sm font-medium truncate">{{ user.name|default:user.username }}</p>
       <p class="text-xs text-muted truncate">{{ user.role_label }}{% if user.job %} · {{ user.get_job_display }}{% elif user.department %} · {{ user.department }}{% endif %}</p>
     </div>
+    {# 알림 벨 (데스크톱 전용 - 1024px 미만에서는 상단 바의 벨을 사용) #}
+    <div class="hidden lg:block shrink-0">{% include 'components/notification_bell.html' with badge_id='notif-badge-sidebar' %}</div>
   </div>
 
   {# ── 새 문의 (강조 버튼) ── #}
@@ -42,6 +44,9 @@
   <nav class="flex-1 overflow-y-auto px-2 space-y-0.5 text-sm">
     {% url 'dashboard:home' as url %}
     {% include 'components/nav_item.html' with key='home' href=url icon='house' label='홈' %}
+
+    {% url 'notifications:list' as url %}
+    {% include 'components/nav_item.html' with key='notifications' href=url icon='bell' label='알림' badge_id='notif-badge-nav' %}
 
     {% url 'inquiries:mine' as url %}
     {% include 'components/nav_item.html' with key='mine' href=url icon='inbox' label='내 문의' %}

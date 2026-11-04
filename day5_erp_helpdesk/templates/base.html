@@ -25,12 +25,13 @@
   {# ── 본문 영역 (데스크톱에서는 사이드바 폭만큼 오른쪽으로) ── #}
   <div class="lg:pl-60">
 
-    {# 모바일 상단 바: 햄버거 버튼 #}
+    {# 모바일 상단 바: 햄버거 버튼 + 오른쪽 끝 알림 벨 #}
     <div class="lg:hidden sticky top-0 z-20 flex items-center gap-2 h-14 px-4 bg-canvas/90 backdrop-blur border-b border-line">
       <button type="button" class="p-2 -ml-2 rounded-md hover:bg-hover" aria-label="메뉴 열기" data-sidebar-open>
         <i data-lucide="menu" class="w-5 h-5"></i>
       </button>
       <span class="font-semibold text-sm">ERP Helpdesk</span>
+      <div class="ml-auto -mr-2">{% include 'components/notification_bell.html' with badge_id='notif-badge-mobile' %}</div>
     </div>
 
     <main class="max-w-content mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
@@ -81,6 +82,21 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
+  {% comment %}
+    ── 알림 패널 (벨을 누르면 열림) ──
+    데스크톱: 사이드바 바로 오른쪽 360px 팝오버 / 1024px 미만: 상단 바 아래 전체 폭 시트
+  {% endcomment %}
+  <div id="notif-panel" role="dialog" aria-modal="false" aria-labelledby="notif-panel-title"
+       class="hidden fixed z-50 inset-x-0 top-14 bottom-0 bg-canvas border-t border-line shadow-lg flex flex-col
+              lg:inset-x-auto lg:bottom-auto lg:top-3 lg:left-[248px] lg:w-[360px] lg:max-h-[min(640px,calc(100vh-24px))] lg:border lg:rounded-lg">
+    <div id="notif-panel-body" class="flex flex-col min-h-0 max-h-full">
+      <p class="p-6 text-sm text-muted">불러오는 중…</p>
+    </div>
+  </div>
+
+  {# 안 읽은 개수 60초마다 확인 → 배지 3곳 교체(oob), 탭 제목은 아래 스크립트가 갱신 #}
+  <div hx-get="{% url 'notifications:badge' %}" hx-trigger="every 60s" hx-swap="none" aria-hidden="true"></div>
 </div>
 {% endblock %}
 
@@ -103,6 +119,63 @@
     // 창을 넓히면 열림 상태 정리
     window.matchMedia('(min-width: 1024px)').addEventListener('change', e => { if (e.matches) setOpen(false); });
   })();
+
+  // ── 알림 패널 여닫기 ──
+  // 벨 클릭 → 열기(HTMX로 내용 불러오기) / 벨 다시 클릭·바깥 클릭·ESC → 닫기
+  // 열리면 첫 항목으로 포커스, 닫히면 벨로 포커스 복귀, ↑↓ 키로 알림 사이 이동
+  (function () {
+    const panel = document.getElementById('notif-panel');
+    const body = document.getElementById('notif-panel-body');
+    const toggles = () => document.querySelectorAll('[data-notif-toggle]');
+    let opener = null;
+    const isOpen = () => !panel.classList.contains('hidden');
+
+    function open(button) {
+      opener = button;
+      panel.classList.remove('hidden');
+      toggles().forEach(b => b.setAttribute('aria-expanded', 'true'));
+      htmx.ajax('GET', '{% url "notifications:panel" %}', { target: body, swap: 'innerHTML' }).then(() => {
+        const first = panel.querySelector('ul a') || panel.querySelector('a, button:not([disabled])');
+        if (first) first.focus();
+      });
+    }
+
+    function close(returnFocus) {
+      if (!isOpen()) return;
+      panel.classList.add('hidden');
+      toggles().forEach(b => b.setAttribute('aria-expanded', 'false'));
+      if (returnFocus && opener) opener.focus();
+    }
+
+    document.addEventListener('click', (e) => {
+      const toggle = e.target.closest('[data-notif-toggle]');
+      if (toggle) { isOpen() ? close(true) : open(toggle); return; }
+      if (isOpen() && !panel.contains(e.target)) close(false);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!isOpen()) return;
+      if (e.key === 'Escape') { close(true); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const links = [...panel.querySelectorAll('ul a')];
+        const index = links.indexOf(document.activeElement);
+        if (index === -1) return;
+        e.preventDefault();
+        const next = links[(index + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length];
+        next.focus();
+      }
+    });
+  })();
+
+  // ── 탭 제목 앞 안 읽은 개수: "(3) 전체 문의 · ERP Helpdesk" ──
+  // 알림 관련 HTMX 응답의 X-Unread-Count 헤더를 보고 갱신
+  document.body.addEventListener('htmx:afterRequest', (e) => {
+    const value = e.detail.xhr && e.detail.xhr.getResponseHeader('X-Unread-Count');
+    if (value === null || value === undefined || value === '') return;
+    const count = parseInt(value, 10);
+    const base = document.title.replace(/^\(\d+\+?\)\s/, '');
+    document.title = count > 0 ? `(${count > 99 ? '99+' : count}) ${base}` : base;
+  });
 </script>
 {% block page_js %}{% endblock %}
 {% endblock %}

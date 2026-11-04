@@ -1,0 +1,33 @@
+{% load humanize %}
+{% comment %}
+  웹 알림 한 줄 - 알림 패널·전체 알림 페이지·홈에서 함께 사용
+  사용: {% include 'components/notification_item.html' with n=notification %}
+  - 누르면 /notifications/<id>/go/ → 읽음 처리 → 문의 상세
+  - 안 읽은 알림: 연한 파란 배경 + 왼쪽 파란 점 (화면 낭독기에는 '안 읽음'으로 읽힘)
+  - 상황별 아이콘: 새 문의·배정·답변·코멘트·상태 변경
+{% endcomment %}
+<a href="{% url 'notifications:go' n.pk %}"
+   class="relative flex items-start gap-3 pl-6 pr-4 py-3 transition-colors outline-none
+          hover:bg-hover focus-visible:bg-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40
+          {% if not n.is_read %}bg-blue-50/70{% endif %}">
+  {% if not n.is_read %}
+    <span class="absolute left-2.5 top-[1.35rem] w-1.5 h-1.5 rounded-full bg-accent" aria-hidden="true"></span>
+    <span class="sr-only">안 읽음,</span>
+  {% endif %}
+  <span class="flex items-center justify-center w-8 h-8 rounded-full shrink-0
+               {% if n.event_type == 'CREATED' %}bg-gray-100 text-gray-600
+               {% elif n.event_type == 'ASSIGNED' %}bg-purple-100 text-purple-600
+               {% elif n.event_type == 'ANSWERED' %}bg-green-100 text-green-700
+               {% elif n.event_type == 'COMMENTED' %}bg-yellow-100 text-yellow-800
+               {% else %}bg-blue-100 text-blue-600{% endif %}" aria-hidden="true">
+    <i data-lucide="{% if n.event_type == 'CREATED' %}file-plus{% elif n.event_type == 'ASSIGNED' %}user-check{% elif n.event_type == 'ANSWERED' %}message-square-reply{% elif n.event_type == 'COMMENTED' %}message-circle{% else %}refresh-cw{% endif %}" class="w-4 h-4"></i>
+  </span>
+  <span class="min-w-0 flex-1">
+    <span class="block text-sm leading-snug break-words {% if n.is_read %}text-muted{% else %}text-ink font-medium{% endif %}">{{ n.message }}</span>
+    <span class="mt-1 flex items-center gap-1.5 text-xs text-muted">
+      <span class="font-mono">{{ n.inquiry.inquiry_no|default:'삭제된 문의' }}</span>
+      <span aria-hidden="true">·</span>
+      <time datetime="{{ n.created_at|date:'c' }}" title="{{ n.created_at|date:'Y-m-d H:i' }}">{{ n.created_at|naturaltime }}</time>
+    </span>
+  </span>
+</a>

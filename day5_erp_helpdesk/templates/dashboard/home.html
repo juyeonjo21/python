@@ -32,6 +32,25 @@
     </section>
   {% endif %}
 
+  {# ── 새 알림 (안 읽은 알림 최대 5개) ── #}
+  <section aria-labelledby="home-notifications">
+    <div class="flex items-center justify-between mb-3">
+      <h2 id="home-notifications" class="text-base font-semibold">새 알림
+        {% if unread_count %}<span class="ml-1 text-sm font-normal text-muted">안 읽음 {{ unread_count }}개</span>{% endif %}
+      </h2>
+      <a href="{% url 'notifications:list' %}" class="text-sm text-muted hover:text-ink">전체 보기 →</a>
+    </div>
+    {% if new_notifications %}
+      <ul class="card overflow-hidden divide-y divide-line">
+        {% for n in new_notifications %}<li>{% include 'components/notification_item.html' with n=n %}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <div class="card flex items-center gap-3 px-4 py-4 text-sm text-muted">
+        <i data-lucide="bell-off" class="w-4 h-4"></i>새 알림이 없습니다
+      </div>
+    {% endif %}
+  </section>
+
   {% if user.is_staff_member %}
     {# ════════ 담당자·관리자 ════════ #}
     <section class="grid sm:grid-cols-3 gap-4">

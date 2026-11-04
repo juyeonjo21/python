@@ -80,6 +80,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # 안 읽은 웹 알림 개수 (벨 배지·탭 제목)
+                'notifications.context_processors.unread_notifications',
             ],
         },
     },

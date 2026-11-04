@@ -9,7 +9,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">{# 빈 아이콘 (favicon.ico 404 방지) #}
-  <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}ERP Helpdesk{% endblock %}</title>
+  {# 안 읽은 알림이 있으면 탭 제목 앞에 개수: "(3) 전체 문의 · ERP Helpdesk" (60초마다 base.html 스크립트가 갱신) #}
+  <title>{% if unread_display %}({{ unread_display }}) {% endif %}{% block title %}{% if page_title %}{{ page_title }} · {% endif %}ERP Helpdesk{% endblock %}</title>
 
   <!-- 폰트: Pretendard -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">

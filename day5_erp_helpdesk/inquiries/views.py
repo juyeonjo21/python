@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import agent_required
 from accounts.models import Job
 from notices.models import Notice
+from notifications.inapp import mark_inquiry_read
 
 from . import services
 from .forms import ALLOWED_EXTENSIONS, CommentForm, InquiryCreateForm, InquiryFilterForm
@@ -245,6 +246,7 @@ def _get_inquiry_for(user, inquiry_no):
 
 def inquiry_detail(request, inquiry_no):
     inquiry = _get_inquiry_for(request.user, inquiry_no)
+    mark_inquiry_read(request.user, inquiry)  # 이 문의에 대한 내 안 읽은 웹 알림 → 읽음
     context = _detail_context(request, inquiry)
     context['back_url'] = _list_back_url(request)
     return render(request, 'inquiries/inquiry_detail.html', context)

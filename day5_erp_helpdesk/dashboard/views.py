@@ -22,7 +22,7 @@ from accounts.decorators import admin_required, agent_required
 from accounts.models import Department, User
 from inquiries.models import Category, Inquiry
 from notices.models import Notice
-from notifications.models import EmailLog
+from notifications.models import EmailLog, Notification
 
 S = Inquiry.Status
 DONE_STATUSES = [S.CLOSED, S.REJECTED]  # 더 이상 처리할 것이 없는 상태
@@ -39,6 +39,9 @@ def home(request):
         'active_menu': 'home',
         'today': today,
         'pinned_notices': Notice.objects.filter(is_pinned=True).order_by('-created_at')[:3],
+        # '새 알림' 카드: 안 읽은 알림 최대 5개
+        'new_notifications': Notification.objects.filter(recipient=user, is_read=False)
+                             .select_related('inquiry')[:5],
     }
 
     if user.is_staff_member:

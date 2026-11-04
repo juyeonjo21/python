@@ -21,7 +21,8 @@ from django.utils import timezone
 from accounts.models import Department, Job, User
 from inquiries.models import Category, Comment, History, Inquiry, RelatedInquiry
 from notices.models import Notice
-from notifications.models import EmailLog
+from notifications import messages as notice_messages
+from notifications.models import EmailLog, Notification
 
 S = Inquiry.Status  # 짧게 쓰기 위한 별칭
 
@@ -175,18 +176,20 @@ class Command(BaseCommand):
             self._create_inquiries(categories, users)
             self._create_notices(users['admin'])
         self._link_notices(categories)
+        self._create_notifications(users)
 
         self.stdout.write(self.style.SUCCESS(
             f'완료: 부서 {Department.objects.count()}개, 분류 {Category.objects.count()}개, '
             f'사용자 {User.objects.count()}명, 문의 {Inquiry.objects.count()}건, '
             f'답변 {Comment.objects.count()}건, 이력 {History.objects.count()}건, '
-            f'공지 {Notice.objects.count()}건'
+            f'공지 {Notice.objects.count()}건, 웹 알림 {Notification.objects.count()}건'
         ))
 
     # --------------------------------------------------------
     # 초기화 (개발용 명령이므로 예외적으로 실제 삭제)
     # --------------------------------------------------------
     def _reset(self):
+        Notification.objects.all().delete()
         EmailLog.objects.all().delete()
         RelatedInquiry.objects.all().delete()
         History.objects.all().delete()  # 이력이 문의를 보호(PROTECT)하므로 먼저 삭제
@@ -364,6 +367,65 @@ class Command(BaseCommand):
             )
             when = self.now - timedelta(days=days_ago)
             Notice.objects.filter(pk=notice.pk).update(created_at=when, updated_at=when)
+
+    # --------------------------------------------------------
+    # 웹 알림 샘플 (계정마다 안 읽은 3~5개 + 읽은 몇 개)
+    # --------------------------------------------------------
+    def _create_notifications(self, users):
+        if Notification.objects.exists():
+            self.stdout.write('웹 알림이 이미 있어 샘플 알림 생성은 건너뜁니다.')
+            return
+        rng = random.Random(7)
+        E = Notification.EventType
+        admin = users['admin']
+        staff_by_job = {u.job: u for u in users.values() if u.job}
+        open_inquiries = Inquiry.objects.exclude(status__in=[S.CLOSED, S.REJECTED]).select_related('requester')
+
+        for user in users.values():
+            items = []  # (상황, 문의, 행동한 사람, 문장) - 최신 것부터
+            if user.role == User.Role.USER:
+                # 요청자: 내 문의의 진행 과정 알림 (담당자 이름 대신 직무로 표시)
+                # '접수' 상태 문의는 아직 아무 변화가 없으므로 제외
+                for inq in (Inquiry.objects.filter(requester=user).exclude(status=S.RECEIVED)
+                            .order_by('-updated_at')[:5]):
+                    actor = staff_by_job.get(inq.assigned_job, admin)
+                    if inq.status == S.CLOSED:
+                        items.append((E.STATUS_CHANGED, inq, actor, notice_messages.status_changed(inq, S.CLOSED, actor)))
+                    if inq.status in (S.ANSWERED, S.CLOSED):
+                        items.append((E.ANSWERED, inq, actor, notice_messages.answered(inq, actor)))
+                    else:
+                        items.append((E.STATUS_CHANGED, inq, actor, notice_messages.status_changed(inq, inq.status, actor)))
+                    if inq.status != S.CHECKING:  # 더 이전 단계: 확인 중으로 바뀐 알림
+                        items.append((E.STATUS_CHANGED, inq, actor, notice_messages.status_changed(inq, S.CHECKING, actor)))
+            else:
+                # 담당자: 내 직무에 배정된 문의 + 새 문의 + 요청자 코멘트
+                if user.job:
+                    for inq in open_inquiries.filter(assigned_job=user.job).order_by('-updated_at')[:3]:
+                        items.append((E.ASSIGNED, inq, admin,
+                                      notice_messages.assigned(inq, user.get_job_display(), admin)))
+                for inq in open_inquiries.filter(assigned_job='').exclude(requester=user).order_by('-created_at')[:4]:
+                    items.append((E.CREATED, inq, inq.requester, notice_messages.created(inq)))
+                for inq in open_inquiries.filter(assigned_job=user.job or '').order_by('created_at')[:2]:
+                    items.append((E.COMMENTED, inq, inq.requester, notice_messages.commented(inq, inq.requester)))
+
+            items = items[:8]
+            # 안 읽은 알림 3~5개를 먼저 채우고, 남는 것은 읽은 알림
+            # (실제로 일어난 일만 알림으로 만들기 때문에 문의가 적은 계정은 읽은 알림이 없을 수 있음)
+            unread_count = min(rng.randint(3, 5), len(items))
+            if len(items) - unread_count < 2 and len(items) >= 5:
+                unread_count = len(items) - 2
+            hours = 0
+            for index, (event_type, inq, actor, message) in enumerate(items):
+                hours += rng.randint(2, 20)
+                created_at = self.now - timedelta(hours=hours)
+                notification = Notification.objects.create(
+                    recipient=user, inquiry=inq, actor=actor, event_type=event_type, message=message,
+                )
+                is_read = index >= unread_count
+                Notification.objects.filter(pk=notification.pk).update(
+                    created_at=created_at, is_read=is_read,
+                    read_at=created_at + timedelta(hours=1) if is_read else None,
+                )
 
     def _link_notices(self, categories):
         """샘플 공지를 관련 문의 카테고리와 연결 (문의 등록 화면 참고 패널용)"""
